@@ -49,7 +49,7 @@ class Usuario(db.Model):
     email = db.Column(db.String(150), unique=True, nullable=False)
     login = db.Column(db.String(50), unique=True, nullable=False)
     senha = db.Column(db.String(200), nullable=False)
-    perfil = db.Column(db.String(20), default='operador')  # dono, gerente, operador
+    perfil = db.Column(db.String(20), default='operador')
     ativo = db.Column(db.Boolean, default=True)
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
     token_reset = db.Column(db.String(100), nullable=True)
@@ -58,11 +58,11 @@ class Usuario(db.Model):
 
 class Rider(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), nullable=False)          # Nome da banda
-    data = db.Column(db.String(20), nullable=False)           # Data da apresentação
-    cache = db.Column(db.Float, nullable=False, default=0)    # Valor do cachê
-    itens_rider_json = db.Column(db.Text, default='[]')       # Rider permitido (JSON)
-    consumo_extra_json = db.Column(db.Text, default='[]')     # Consumo extra (JSON)
+    nome = db.Column(db.String(100), nullable=False)
+    data = db.Column(db.String(20), nullable=False)
+    cache = db.Column(db.Float, nullable=False, default=0)
+    itens_rider_json = db.Column(db.Text, default='[]')
+    consumo_extra_json = db.Column(db.Text, default='[]')
     encerrado = db.Column(db.Boolean, default=False)
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -90,12 +90,33 @@ class Rider(db.Model):
 
     def to_dict(self):
         return {
-            'id':           self.id,
-            'nome':         self.nome,
-            'data':         self.data,
-            'cache':        self.cache,
-            'itens_rider':  self.itens_rider,
+            'id':            self.id,
+            'nome':          self.nome,
+            'data':          self.data,
+            'cache':         self.cache,
+            'itens_rider':   self.itens_rider,
             'consumo_extra': self.consumo_extra,
-            'encerrado':    self.encerrado,
-            'criado_em':    self.criado_em.strftime('%d/%m/%Y %H:%M') if self.criado_em else ''
+            'encerrado':     self.encerrado,
+            'criado_em':     self.criado_em.strftime('%d/%m/%Y %H:%M') if self.criado_em else ''
+        }
+
+
+class Evento(db.Model):
+    __tablename__ = 'eventos'
+    id        = db.Column(db.Integer, primary_key=True)
+    nome      = db.Column(db.String(200), nullable=False)
+    data      = db.Column(db.String(10),  nullable=False)   # YYYY-MM-DD
+    hora      = db.Column(db.String(5),   nullable=False)   # HH:MM
+    cache     = db.Column(db.Float, default=0.0)
+    obs       = db.Column(db.Text, default='')
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id':    self.id,
+            'nome':  self.nome,
+            'data':  self.data,
+            'hora':  self.hora,
+            'cache': self.cache,
+            'obs':   self.obs,
         }

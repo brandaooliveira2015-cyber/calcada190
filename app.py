@@ -1,12 +1,10 @@
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash
 from flask_cors import CORS
 from database import db
-from models import Produto, Pedido, Despesa, Usuario, Rider
+from models import Produto, Pedido, Despesa, Rider, Evento
 from datetime import datetime, date, timedelta
 import os
-import secrets
 from werkzeug.utils import secure_filename
-from werkzeug.security import generate_password_hash, check_password_hash
 import requests
 
 app = Flask(__name__)
@@ -33,16 +31,6 @@ db.init_app(app)
 
 with app.app_context():
     db.create_all()
-    if not Usuario.query.filter_by(login='calcada190').first():
-        u = Usuario(
-            nome='Administrador',
-            email='admin@calcada190.com',
-            login='calcada190ml.',
-            senha=generate_password_hash('calcada190ml.'),
-            perfil='dono'
-        )
-        db.session.add(u)
-        db.session.commit()
 
 
 def allowed_file(filename):
@@ -128,102 +116,34 @@ def produto_dict(p):
 
 
 # ============================================================
-# AUTH — Login, Logout, Cadastro, Recuperação de Senha
+# AUTH — Login Fixo
 # ============================================================
+
+LOGIN_SISTEMA = "calcada190ml."
+SENHA_SISTEMA = "calcada190ml."
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
     if session.get('logado'):
         return redirect(url_for('dashboard_page'))
+
     erro = None
+
     if request.method == 'POST':
         login = request.form.get('login', '').strip()
         senha = request.form.get('senha', '').strip()
-        u = Usuario.query.filter_by(login=login, ativo=True).first()
-        if u and check_password_hash(u.senha, senha):
+
+        if login == LOGIN_SISTEMA and senha == SENHA_SISTEMA:
             session['logado'] = True
-            session['login']  = u.login
-            session['nome']   = u.nome
-            session['perfil'] = u.perfil
+            session['login'] = LOGIN_SISTEMA
+            session['nome'] = 'Administrador'
+            session['perfil'] = 'dono'
+
             return redirect(url_for('dashboard_page'))
+
         erro = 'Login ou senha incorretos.'
+
     return render_template('login.html', erro=erro)
-
-
-@app.route('/cadastro', methods=['GET', 'POST'])
-def cadastro_page():
-    if session.get('logado'):
-        return redirect(url_for('dashboard_page'))
-    erro = None
-    sucesso = None
-    if request.method == 'POST':
-        nome   = request.form.get('nome', '').strip()
-        email  = request.form.get('email', '').strip().lower()
-        login  = request.form.get('login', '').strip()
-        senha  = request.form.get('senha', '').strip()
-        senha2 = request.form.get('senha2', '').strip()
-        if not nome or not email or not login or not senha:
-            erro = 'Preencha todos os campos.'
-        elif senha != senha2:
-            erro = 'As senhas não coincidem.'
-        elif len(senha) < 6:
-            erro = 'A senha deve ter pelo menos 6 caracteres.'
-        elif Usuario.query.filter_by(login=login).first():
-            erro = 'Este login já está em uso.'
-        elif Usuario.query.filter_by(email=email).first():
-            erro = 'Este e-mail já está cadastrado.'
-        else:
-            u = Usuario(
-                nome=nome, email=email, login=login,
-                senha=generate_password_hash(senha),
-                perfil='operador'
-            )
-            db.session.add(u)
-            db.session.commit()
-            sucesso = 'Conta criada! Aguarde aprovação do administrador ou faça login.'
-    return render_template('cadastro.html', erro=erro, sucesso=sucesso)
-
-
-@app.route('/esqueci-senha', methods=['GET', 'POST'])
-def esqueci_senha():
-    erro = None
-    sucesso = None
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
-        u = Usuario.query.filter_by(email=email, ativo=True).first()
-        if u:
-            token = secrets.token_urlsafe(32)
-            u.token_reset  = token
-            u.token_expira = datetime.utcnow() + timedelta(hours=2)
-            db.session.commit()
-            link = url_for('resetar_senha', token=token, _external=True)
-            sucesso = f'Link de recuperação gerado! Acesse: {link}'
-        else:
-            sucesso = 'Se o e-mail existir, você receberá as instruções.'
-    return render_template('esqueci_senha.html', erro=erro, sucesso=sucesso)
-
-
-@app.route('/resetar-senha/<token>', methods=['GET', 'POST'])
-def resetar_senha(token):
-    u = Usuario.query.filter_by(token_reset=token).first()
-    erro = None
-    if not u or (u.token_expira and u.token_expira < datetime.utcnow()):
-        return render_template('resetar_senha.html', erro='Link inválido ou expirado.', token=token)
-    if request.method == 'POST':
-        senha  = request.form.get('senha', '').strip()
-        senha2 = request.form.get('senha2', '').strip()
-        if senha != senha2:
-            erro = 'As senhas não coincidem.'
-        elif len(senha) < 6:
-            erro = 'A senha deve ter pelo menos 6 caracteres.'
-        else:
-            u.senha        = generate_password_hash(senha)
-            u.token_reset  = None
-            u.token_expira = None
-            db.session.commit()
-            return redirect(url_for('login_page'))
-    return render_template('resetar_senha.html', erro=erro, token=token)
-
 
 @app.route('/logout')
 def logout():
@@ -1020,6 +940,49 @@ def agenda_page():
         perfil=session.get('perfil'),
         active_page='agenda'
     )
+
+@app.route('/api/agenda', methods=['GET'])
+@login_required
+def listar_eventos():
+    eventos = Evento.query.order_by(Evento.data, Evento.hora).all()
+    return jsonify([e.to_dict() for e in eventos])
+ 
+@app.route('/api/agenda', methods=['POST'])
+@login_required
+def criar_evento():
+    data = request.json or {}
+    nome  = data.get('nome', '').upper().strip()
+    dt    = data.get('data', '')
+    hora  = data.get('hora', '')
+    cache = float(data.get('cache', 0))
+    obs   = data.get('obs', '')
+    if not nome or not dt or not hora:
+        return jsonify({'erro': 'Nome, data e hora são obrigatórios'}), 400
+    ev = Evento(nome=nome, data=dt, hora=hora, cache=cache, obs=obs)
+    db.session.add(ev)
+    db.session.commit()
+    return jsonify({'ok': True, 'id': ev.id}), 201
+ 
+@app.route('/api/agenda/<int:eid>', methods=['PUT'])
+@login_required
+def editar_evento(eid):
+    ev = Evento.query.get_or_404(eid)
+    data = request.json or {}
+    ev.nome  = data.get('nome', ev.nome).upper().strip()
+    ev.data  = data.get('data', ev.data)
+    ev.hora  = data.get('hora', ev.hora)
+    ev.cache = float(data.get('cache', ev.cache))
+    ev.obs   = data.get('obs', ev.obs)
+    db.session.commit()
+    return jsonify({'ok': True})
+ 
+@app.route('/api/agenda/<int:eid>', methods=['DELETE'])
+@login_required
+def excluir_evento(eid):
+    ev = Evento.query.get_or_404(eid)
+    db.session.delete(ev)
+    db.session.commit()
+    return jsonify({'ok': True})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

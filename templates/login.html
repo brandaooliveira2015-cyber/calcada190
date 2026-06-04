@@ -24,7 +24,6 @@
             position: relative;
             overflow: hidden;
         }
-        /* Fundo escuro com textura */
         body::before {
             content: '';
             position: fixed;
@@ -35,7 +34,6 @@
                 #0a0a0a;
             z-index: 0;
         }
-        /* Logo de fundo gigante, marca d'água */
         body::after {
             content: '';
             position: fixed;
@@ -124,10 +122,6 @@
         .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(255,85,0,0.45); }
         .btn:active { transform: translateY(0); }
         .erro { background: rgba(255,61,61,0.1); border: 1px solid rgba(255,61,61,0.3); color: #ff8888; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
-        .links { display: flex; justify-content: space-between; margin-top: 20px; }
-        .links a { color: var(--muted); font-size: 12px; text-decoration: none; transition: color 0.15s; }
-        .links a:hover { color: var(--laranja); }
-        .divider { height: 1px; background: var(--border); margin: 20px 0; }
     </style>
 </head>
 <body>
@@ -152,10 +146,6 @@
             </div>
             <button type="submit" class="btn">Entrar no Sistema</button>
         </form>
-        <div class="links">
-            <a href="/cadastro">Criar conta</a>
-            <a href="/esqueci-senha">Esqueci minha senha</a>
-        </div>
     </div>
 </div>
 </body>
