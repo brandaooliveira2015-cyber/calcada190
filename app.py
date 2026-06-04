@@ -10,16 +10,25 @@ import os
 app = Flask(__name__)
 CORS(app)
 
+# ==========================
+# CONFIGURAÇÕES
+# ==========================
+
 app.secret_key = os.environ.get(
     "SECRET_KEY",
     "calcada190-secret-2025"
 )
 
-# PostgreSQL Render
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# PostgreSQL no Render
+# SQLite local caso DATABASE_URL não exista
 
-# Corrige compatibilidade caso venha postgres://
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "sqlite:///calcada190.db"
+)
+
+# Compatibilidade Render
+if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace(
         "postgres://",
         "postgresql://",
@@ -29,10 +38,33 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+# ==========================
+# INICIALIZA BANCO
+# ==========================
+
 db.init_app(app)
 
 with app.app_context():
     db.create_all()
+
+# ==========================
+# UPLOADS
+# ==========================
+
+UPLOAD_FOLDER = "static/uploads"
+
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+# ==========================
+# TESTE
+# ==========================
+
+print("=" * 50)
+print("BANCO:", DATABASE_URL)
+print("=" * 50)
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'calcada190.db')
@@ -50,7 +82,7 @@ CIELO_MERCHANT_ID  = os.environ.get('CIELO_MERCHANT_ID', '')
 TZ_OFFSET      = int(os.environ.get('TZ_OFFSET_HOURS', '-4'))
 APP_SYNC_TOKEN = os.environ.get('APP_SYNC_TOKEN', 'calcada190-app-token')
 
-db.init_app(app)
+
 
 with app.app_context():
     db.create_all()
