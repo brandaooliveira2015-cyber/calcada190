@@ -37,8 +37,8 @@ with app.app_context():
         u = Usuario(
             nome='Administrador',
             email='admin@calcada190.com',
-            login='calcada190',
-            senha=generate_password_hash('calcada190'),
+            login='calcada190ml.',
+            senha=generate_password_hash('calcada190ml.'),
             perfil='dono'
         )
         db.session.add(u)
