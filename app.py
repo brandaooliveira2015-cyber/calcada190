@@ -3,13 +3,36 @@ from flask_cors import CORS
 from database import db
 from models import Produto, Pedido, Despesa, Rider, Evento
 from datetime import datetime, date, timedelta
-import os
 from werkzeug.utils import secure_filename
 import requests
+import os
 
 app = Flask(__name__)
 CORS(app)
-app.secret_key = os.environ.get('SECRET_KEY', 'calcada190-secret-2025')
+
+app.secret_key = os.environ.get(
+    "SECRET_KEY",
+    "calcada190-secret-2025"
+)
+
+# PostgreSQL Render
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+# Corrige compatibilidade caso venha postgres://
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgres://",
+        "postgresql://",
+        1
+    )
+
+app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'calcada190.db')
