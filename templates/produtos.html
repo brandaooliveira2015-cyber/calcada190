@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block title %}Produtos{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .estoque-badge { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .estoque-ok   { background: rgba(0,230,118,0.12); color: var(--verde); }
+    .estoque-min  { background: rgba(255,61,61,0.12); color: var(--vermelho); }
+    .estoque-zero { background: rgba(60,60,60,0.4); color: #555; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title"><span>Produtos</span></div>
+    <button class="btn" onclick="abrirModalProduto()">＋ Cadastrar Produto</button>
+</div>
+
+<div class="alerta-estoque" id="alerta-estoque-prod">
+    <h4>⚠️ Produtos com estoque baixo</h4>
+    <ul id="alerta-prod-lista"></ul>
+</div>
+
+<div class="section">
+    <div class="section-header">
+        <h2>📦 Produtos Cadastrados</h2>
+        <input type="text" id="busca-produto" placeholder="🔍 Buscar produto..."
+               style="width:200px;padding:8px 12px;font-size:13px"
+               oninput="filtrarListaProdutos(this.value)">
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Foto</th><th>Nome</th><th>Categoria</th><th>Venda</th>
+                    <th>Custo</th><th>Margem</th><th>Estoque</th><th>Mín.</th>
+                    <th>Disponível</th><th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="lista-produtos"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL PRODUTO -->
+<div class="modal-overlay" id="modal-produto-overlay">
+    <div class="modal">
+        <button class="modal-close" onclick="fecharModal('modal-produto-overlay')">✕</button>
+        <h2 id="modal-prod-titulo">🍺 Cadastrar Produto</h2>
+        <input type="hidden" id="mp-id">
+        <div class="form-row">
+            <div class="form-group" style="flex:2">
+                <label>Nome do Produto</label>
+                <input type="text" id="mp-nome" placeholder="EX: HEINEKEN LONG NECK" oninput="this.value=this.value.toUpperCase()">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Preço de Venda</label>
+                <input type="text" id="mp-venda" placeholder="R$ 0,00" oninput="mascaraPreco(this)" inputmode="numeric">
+            </div>
+            <div class="form-group">
+                <label>Preço de Custo</label>
+                <input type="text" id="mp-custo" placeholder="R$ 0,00" oninput="mascaraPreco(this)" inputmode="numeric">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Categoria</label>
+                <select id="mp-categoria">
+                    <option value="Bebidas">🍺 Bebidas</option>
+                    <option value="Drinks">🍹 Drinks</option>
+                    <option value="Narguile">💨 Narguile</option>
+                    <option value="Porcao">🍗 Porção</option>
+                    <option value="Variedades">🎯 Variedades</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Estoque Inicial</label>
+                <input type="number" id="mp-estoque" placeholder="0" min="0">
+            </div>
+            <div class="form-group">
+                <label>Estoque Mínimo</label>
+                <input type="number" id="mp-estoque-min" placeholder="0" min="0">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Foto do Produto</label>
+                <input type="file" id="mp-foto" accept="image/*" onchange="previewFotoModal(this)">
+                <img id="mp-foto-preview" class="foto-preview">
+            </div>
+        </div>
+        <button class="btn" style="width:100%;justify-content:center;padding:13px;font-size:15px;margin-top:4px" onclick="salvarProduto()">💾 Salvar Produto</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let todosProdsLista = [];
+
+async function carregarProdutos() {
+    todosProdsLista = await fetch('/api/produtos').then(r => r.json()).catch(() => []);
+    renderizarListaProdutos(todosProdsLista);
+    verificarEstoque();
+}
+
+function renderizarListaProdutos(lista) {
+    const tbody = document.getElementById('lista-produtos');
+    if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:28px">Nenhum produto cadastrado ainda</td></tr>';
+        return;
+    }
+    tbody.innerHTML = lista.map(p => {
+        const m   = p.preco_venda - p.preco_custo;
+        const pct = p.preco_custo > 0 ? ((m / p.preco_custo) * 100).toFixed(0) + '%' : '—';
+        const em  = p.estoque_minimo || 0;
+        let eb;
+        if (p.estoque === 0)                eb = `<span class="estoque-badge estoque-zero">0</span>`;
+        else if (em > 0 && p.estoque <= em) eb = `<span class="estoque-badge estoque-min">⚠ ${p.estoque}</span>`;
+        else                                eb = `<span class="estoque-badge estoque-ok">${p.estoque}</span>`;
+        const nomeSafe = p.nome.replace(/'/g, "\\'");
+        const catCls   = p.categoria.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                          .replace(/ç/g,'c').replace(/ã/g,'a').replace(/ê/g,'e').replace(/ô/g,'o').replace(/\s/g,'');
+        const disp   = p.disponivel !== false;
+        const tlabel = disp ? '<span class="toggle-label on">On</span>' : '<span class="toggle-label off">Off</span>';
+        return `<tr style="${!disp ? 'opacity:0.5' : ''}">
+            <td>${p.foto ? `<img src="${p.foto}" style="width:34px;height:34px;object-fit:cover;border-radius:6px">` : '<div style="width:34px;height:34px;background:#252525;border-radius:6px;display:flex;align-items:center;justify-content:center">🍺</div>'}</td>
+            <td style="font-weight:600">${p.nome}</td>
+            <td><span class="badge badge-${catCls}">${p.categoria}</span></td>
+            <td style="color:var(--verde);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.preco_venda)}</td>
+            <td style="color:var(--vermelho)">${fmt(p.preco_custo)}</td>
+            <td style="color:var(--laranja);font-weight:600">${pct}</td>
+            <td>${eb}</td>
+            <td style="color:var(--muted);font-size:12px">${em || '—'}</td>
+            <td>
+                <div class="toggle-wrap">
+                    <label class="toggle-switch">
+                        <input type="checkbox" ${disp ? 'checked' : ''} onchange="toggleDisponivel(${p.id},this)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    ${tlabel}
+                </div>
+            </td>
+            <td>
+                <div style="display:flex;gap:5px;align-items:center">
+                    <button class="btn btn-yellow btn-sm btn-icon" onclick="editarProduto(${p.id})">✏️</button>
+                    <button class="btn btn-danger btn-sm btn-icon" onclick="confirmarExcluirProduto(${p.id},'${nomeSafe}')">🗑</button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function toggleDisponivel(id, checkbox) {
+    const linha   = checkbox.closest('tr');
+    const labelEl = checkbox.closest('.toggle-wrap').querySelector('.toggle-label');
+    try {
+        const resp = await fetch('/api/produtos/' + id + '/toggle', { method: 'POST' });
+        const json = await resp.json();
+        if (json.ok) {
+            linha.style.opacity = json.disponivel ? '1' : '0.5';
+            labelEl.className   = 'toggle-label ' + (json.disponivel ? 'on' : 'off');
+            labelEl.textContent = json.disponivel ? 'On' : 'Off';
+            checkbox.checked    = json.disponivel;
+            const prod = todosProdsLista.find(p => p.id === id);
+            if (prod) prod.disponivel = json.disponivel;
+        } else { checkbox.checked = !checkbox.checked; }
+    } catch (e) { checkbox.checked = !checkbox.checked; }
+}
+
+function filtrarListaProdutos(q) {
+    renderizarListaProdutos(todosProdsLista.filter(p => p.nome.toLowerCase().includes(q.toLowerCase())));
+}
+
+function abrirModalProduto() {
+    document.getElementById('modal-prod-titulo').textContent = '🍺 Cadastrar Produto';
+    document.getElementById('mp-id').value = '';
+    ['mp-nome', 'mp-venda', 'mp-custo'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('mp-estoque').value = '0';
+    document.getElementById('mp-estoque-min').value = '0';
+    document.getElementById('mp-categoria').value = 'Bebidas';
+    document.getElementById('mp-foto').value = '';
+    const prev = document.getElementById('mp-foto-preview');
+    prev.style.display = 'none'; prev.src = '';
+    abrirModal('modal-produto-overlay');
+    setTimeout(() => document.getElementById('mp-nome').focus(), 200);
+}
+
+function editarProduto(id) {
+    const p = todosProdsLista.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('modal-prod-titulo').textContent = '✏️ Editar Produto';
+    document.getElementById('mp-id').value = p.id;
+    document.getElementById('mp-nome').value = p.nome;
+    document.getElementById('mp-venda').value = fmt(p.preco_venda);
+    document.getElementById('mp-custo').value = fmt(p.preco_custo);
+    document.getElementById('mp-categoria').value = p.categoria;
+    document.getElementById('mp-estoque').value = p.estoque || 0;
+    document.getElementById('mp-estoque-min').value = p.estoque_minimo || 0;
+    const prev = document.getElementById('mp-foto-preview');
+    if (p.foto) { prev.src = p.foto; prev.style.display = 'block'; } else prev.style.display = 'none';
+    abrirModal('modal-produto-overlay');
+}
+
+async function salvarProduto() {
+    const nome = document.getElementById('mp-nome').value.trim().toUpperCase();
+    const preco_venda = parseMoeda(document.getElementById('mp-venda').value);
+    const preco_custo = parseMoeda(document.getElementById('mp-custo').value);
+    const categoria = document.getElementById('mp-categoria').value;
+    const estoque = parseInt(document.getElementById('mp-estoque').value) || 0;
+    const estoque_minimo = parseInt(document.getElementById('mp-estoque-min').value) || 0;
+    const foto = document.getElementById('mp-foto').files[0];
+    const id = document.getElementById('mp-id').value;
+    if (!nome) { alert('Informe o nome do produto!'); return; }
+    if (!preco_venda) { alert('Informe o preço de venda!'); return; }
+    const fd = new FormData();
+    fd.append('nome', nome); fd.append('preco_venda', preco_venda);
+    fd.append('preco_custo', preco_custo); fd.append('categoria', categoria);
+    fd.append('estoque', estoque); fd.append('estoque_minimo', estoque_minimo);
+    if (foto) fd.append('foto', foto);
+    const url = id ? '/api/produtos/' + id : '/api/produtos';
+    const method = id ? 'PUT' : 'POST';
+    const resp = await fetch(url, { method, body: fd });
+    if (resp.ok) { fecharModal('modal-produto-overlay'); await carregarProdutos(); }
+    else { alert('Erro ao salvar produto. Tente novamente.'); }
+}
+
+function confirmarExcluirProduto(id, nome) {
+    confirmar('🗑', 'Excluir Produto',
+        `Deseja mesmo excluir <strong>${nome}</strong>?<br><small style="color:var(--vermelho)">Esta ação não pode ser desfeita.</small>`,
+        'Sim, Excluir',
+        async () => { await fetch('/api/produtos/' + id, { method: 'DELETE' }); carregarProdutos(); }
+    );
+}
+
+async function verificarEstoque() {
+    const prods = await fetch('/api/produtos').then(r => r.json()).catch(() => []);
+    const min = prods.filter(p => p.estoque_minimo > 0 && p.estoque <= p.estoque_minimo);
+    const alerta = document.getElementById('alerta-estoque-prod');
+    if (min.length) {
+        alerta.style.display = 'block';
+        document.getElementById('alerta-prod-lista').innerHTML = min.map(p => `<li>${p.nome} (${p.estoque}/${p.estoque_minimo})</li>`).join('');
+    } else { alerta.style.display = 'none'; }
+}
+
+function previewFotoModal(input) {
+    const prev = document.getElementById('mp-foto-preview');
+    if (input.files && input.files[0]) { prev.src = URL.createObjectURL(input.files[0]); prev.style.display = 'block'; }
+}
+
+carregarProdutos();
+</script>
+{% endblock %}

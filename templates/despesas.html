@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+{% block title %}Despesas{% endblock %}
+
+{% block extra_styles %}
+<style>
+    /* ── FILTRO DE PERÍODO ── */
+    .periodo-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+    .periodo-btn {
+        background: var(--bg3);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--muted);
+        padding: 7px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .periodo-btn:hover { border-color: var(--laranja); color: var(--text); }
+    .periodo-btn.active {
+        background: var(--laranja);
+        border-color: var(--laranja);
+        color: #fff;
+    }
+    .periodo-select-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+    }
+    .periodo-select-wrap select {
+        background: var(--bg4);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+
+    /* ── CARDS ── */
+    .cards-despesa {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+    @media (max-width: 900px) { .cards-despesa { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .cards-despesa { grid-template-columns: 1fr; } }
+
+    .card-desp {
+        background: var(--bg3);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 18px;
+        transition: border-color 0.15s;
+    }
+    .card-desp h3 {
+        font-size: 10px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+    .card-desp p {
+        font-family: 'Barlow Condensed', sans-serif;
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--vermelho);
+    }
+    .card-desp.destaque {
+        border-color: var(--vermelho);
+        background: rgba(255,61,61,0.06);
+    }
+
+    /* ── SEÇÕES LADO A LADO ── */
+    .desp-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        align-items: start;
+    }
+    @media (max-width: 860px) { .desp-grid { grid-template-columns: 1fr; } }
+
+    /* ── TABELA RIDERS ── */
+    .rider-row-cache    { color: var(--text); font-weight: 600; font-family: 'Barlow Condensed', sans-serif; font-size: 15px; }
+    .rider-row-consumo  { color: var(--vermelho); font-family: 'Barlow Condensed', sans-serif; font-size: 15px; }
+    .rider-row-liquido  { color: var(--verde); font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title"><span>💸</span> Despesas</div>
+    <button class="btn" onclick="abrirModalDespesa()">＋ Registrar Despesa</button>
+</div>
+
+<!-- FILTRO DE PERÍODO -->
+<div class="periodo-wrap">
+    <button class="periodo-btn active" id="btn-hoje"   onclick="setPeriodo('hoje',   this)">Hoje</button>
+    <button class="periodo-btn"        id="btn-semana" onclick="setPeriodo('semana', this)">Esta Semana</button>
+    <button class="periodo-btn"        id="btn-mes"    onclick="setPeriodo('mes',    this)">Este Mês</button>
+
+    <div class="periodo-select-wrap">
+        <select id="filtro-mes" onchange="setPeriodo('custom', null)">
+            <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+            <option value="3">Março</option><option value="4">Abril</option>
+            <option value="5">Maio</option><option value="6">Junho</option>
+            <option value="7">Julho</option><option value="8">Agosto</option>
+            <option value="9">Setembro</option><option value="10">Outubro</option>
+            <option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select>
+        <select id="filtro-ano" onchange="setPeriodo('custom', null)"></select>
+    </div>
+</div>
+
+<!-- CARDS RESUMO -->
+<div class="cards-despesa">
+    <div class="card-desp destaque">
+        <h3>💸 Total no Período</h3>
+        <p id="card-total">R$ 0,00</p>
+    </div>
+    <div class="card-desp">
+        <h3>👷 Diárias</h3>
+        <p id="card-diaria">R$ 0,00</p>
+    </div>
+    <div class="card-desp">
+        <h3>🎵 Bandas / DJ</h3>
+        <p id="card-banda">R$ 0,00</p>
+    </div>
+    <div class="card-desp">
+        <h3>🎸 Rider</h3>
+        <p id="card-rider">R$ 0,00</p>
+    </div>
+    <div class="card-desp">
+        <h3>📦 Outros</h3>
+        <p id="card-outros">R$ 0,00</p>
+    </div>
+</div>
+
+<!-- GRID: HISTÓRICO MANUAL + RIDERS -->
+<div class="desp-grid">
+
+    <!-- DESPESAS MANUAIS -->
+    <div class="section">
+        <div class="section-header">
+            <h2>📋 Histórico de Despesas</h2>
+        </div>
+        <div style="margin-bottom:10px">
+            <select id="filtro-cat" onchange="carregarTudo()" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 12px;font-size:13px">
+                <option value="">Todas as categorias</option>
+                <option value="Diaria">Diária</option>
+                <option value="Banda">Banda / DJ</option>
+                <option value="Rider">Rider</option>
+                <option value="Fixo">Custo Fixo</option>
+                <option value="Compra">Compra de Estoque</option>
+                <option value="Outro">Outro</option>
+            </select>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Data/Hora</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th></th></tr>
+                </thead>
+                <tbody id="lista-despesas"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- RIDERS ENCERRADOS -->
+    <div class="section">
+        <div class="section-header">
+            <h2>🎸 Bandas Encerradas</h2>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Banda</th>
+                        <th>Cachê</th>
+                        <th>Consumo Extra</th>
+                        <th>Valor Líquido</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-riders"></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL DESPESA -->
+<div class="modal-overlay" id="modal-despesa-overlay">
+    <div class="modal" style="max-width:460px">
+        <button class="modal-close" onclick="fecharModal('modal-despesa-overlay')">✕</button>
+        <h2>💸 Registrar Despesa</h2>
+        <div class="form-group" style="margin-bottom:14px">
+            <label>Descrição</label>
+            <input type="text" id="md-desc" placeholder="Ex: Pagamento DJ, Compra de gelo...">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Valor</label>
+                <input type="text" id="md-valor" placeholder="R$ 0,00" oninput="mascaraPreco(this)" inputmode="numeric">
+            </div>
+            <div class="form-group">
+                <label>Categoria</label>
+                <select id="md-cat">
+                    <option value="Diaria">👷 Diária de Funcionário</option>
+                    <option value="Banda">🎵 Banda / DJ</option>
+                    <option value="Rider">🎸 Rider</option>
+                    <option value="Fixo">🏠 Custo Fixo</option>
+                    <option value="Compra">📦 Compra de Estoque</option>
+                    <option value="Outro">📌 Outro</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn" style="width:100%;justify-content:center;padding:13px;font-size:15px;margin-top:4px" onclick="salvarDespesa()">💾 Registrar</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const badgeCat = {
+    Diaria: 'badge-diaria', Banda: 'badge-banda', Rider: 'badge-rider',
+    Fixo: 'badge-fixo', Compra: 'badge-compra', Outro: 'badge-outro'
+};
+
+let periodoAtual = 'hoje';
+
+function setPeriodo(p, btn) {
+    periodoAtual = p;
+    document.querySelectorAll('.periodo-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    carregarTudo();
+}
+
+function getParams() {
+    if (periodoAtual === 'custom') {
+        const mes = document.getElementById('filtro-mes').value;
+        const ano = document.getElementById('filtro-ano').value;
+        return `mes=${mes}&ano=${ano}`;
+    }
+    return `periodo=${periodoAtual}`;
+}
+
+async function carregarTudo() {
+    await Promise.all([carregarDespesas(), carregarRiders()]);
+}
+
+async function carregarDespesas() {
+    try {
+        const cat = document.getElementById('filtro-cat').value;
+        let url = `/api/despesas/historico?${getParams()}`;
+        if (cat) url += `&categoria=${encodeURIComponent(cat)}`;
+
+        const despesas = await fetch(url).then(r => r.json()).catch(() => []);
+
+        // Cards — calcula totais por categoria
+        const soma = (filtCat) => despesas
+            .filter(d => !filtCat || d.categoria === filtCat)
+            .reduce((s, d) => s + d.valor, 0);
+
+        document.getElementById('card-total').textContent  = fmt(soma(''));
+        document.getElementById('card-diaria').textContent = fmt(soma('Diaria'));
+        // card-banda é atualizado em carregarRiders com o valor líquido real pago à banda
+        document.getElementById('card-rider').textContent  = fmt(soma('Rider'));
+        const outros = ['Fixo', 'Compra', 'Outro'].reduce((s, c) => s + soma(c), 0);
+        document.getElementById('card-outros').textContent = fmt(outros);
+
+        // Tabela
+        const tbody = document.getElementById('lista-despesas');
+        tbody.innerHTML = despesas.length
+            ? despesas.map(d => `<tr>
+                <td style="color:var(--muted);font-family:'Barlow Condensed',sans-serif">${d.data}</td>
+                <td style="font-weight:500">${d.descricao}</td>
+                <td><span class="badge ${badgeCat[d.categoria] || 'badge-outro'}">${d.categoria}</span></td>
+                <td style="color:var(--vermelho);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(d.valor)}</td>
+                <td><button class="btn btn-danger btn-sm btn-icon" onclick="confirmarExcluirDespesa(${d.id},'${d.descricao.replace(/'/g, "\\'")}')">🗑</button></td>
+              </tr>`).join('')
+            : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px">Nenhuma despesa no período</td></tr>';
+    } catch(e) { console.error(e); }
+}
+
+// Converte '2026-06-04' → '04/06/2026'
+function fmtData(dataStr) {
+    if (!dataStr) return '—';
+    const [a, m, d] = dataStr.split('-');
+    if (!a || !m || !d) return dataStr;
+    return `${d}/${m}/${a}`;
+}
+
+async function carregarRiders() {
+    try {
+        const riders = await fetch('/api/riders').then(r => r.json()).catch(() => []);
+
+        const filtrados = riders.filter(r => {
+            if (!r.encerrado) return false;
+            if (periodoAtual === 'custom') {
+                const mes = parseInt(document.getElementById('filtro-mes').value);
+                const ano = parseInt(document.getElementById('filtro-ano').value);
+                const [aR, mR] = (r.data || '').split('-').map(Number);
+                return aR === ano && mR === mes;
+            }
+            if (periodoAtual === 'hoje') {
+                const hoje = new Date().toISOString().split('T')[0];
+                return r.data === hoje;
+            }
+            if (periodoAtual === 'semana') {
+                const agora = new Date();
+                const inicioSemana = new Date(agora);
+                inicioSemana.setDate(agora.getDate() - agora.getDay());
+                const dataR = new Date(r.data + 'T00:00:00');
+                return dataR >= inicioSemana;
+            }
+            if (periodoAtual === 'mes') {
+                const agora = new Date();
+                const [aR, mR] = (r.data || '').split('-').map(Number);
+                return aR === agora.getFullYear() && mR === (agora.getMonth() + 1);
+            }
+            return true;
+        });
+
+        // Atualiza o card Bandas/DJ com a soma dos valores LÍQUIDOS (o que saiu do bolso de fato)
+        const totalLiquidoBandas = filtrados.reduce((s, r) => {
+            const consumoTotal = (r.consumo_extra || []).reduce((sc, c) => sc + c.valor, 0);
+            return s + (r.cache - consumoTotal);
+        }, 0);
+        document.getElementById('card-banda').textContent = fmt(totalLiquidoBandas);
+
+        const tbody = document.getElementById('lista-riders');
+        tbody.innerHTML = filtrados.length
+            ? filtrados.map(r => {
+                const consumoTotal = (r.consumo_extra || []).reduce((s, c) => s + c.valor, 0);
+                const liquido = r.cache - consumoTotal;
+                return `<tr>
+                    <td style="color:var(--muted);font-family:'Barlow Condensed',sans-serif">${fmtData(r.data)}</td>
+                    <td style="font-weight:700">${r.nome}</td>
+                    <td class="rider-row-cache">${fmt(r.cache)}</td>
+                    <td class="rider-row-consumo">${consumoTotal > 0 ? '− ' + fmt(consumoTotal) : '—'}</td>
+                    <td class="rider-row-liquido">${fmt(liquido)}</td>
+                </tr>`;
+              }).join('')
+            : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px">Nenhum rider encerrado no período</td></tr>';
+    } catch(e) { console.error(e); }
+}
+
+function inicializarFiltros() {
+    const agora = new Date();
+    document.getElementById('filtro-mes').value = agora.getMonth() + 1;
+    const selAno = document.getElementById('filtro-ano');
+    for (let a = agora.getFullYear(); a >= agora.getFullYear() - 2; a--) {
+        const opt = document.createElement('option');
+        opt.value = a; opt.textContent = a;
+        selAno.appendChild(opt);
+    }
+}
+
+function abrirModalDespesa() {
+    document.getElementById('md-desc').value = '';
+    document.getElementById('md-valor').value = '';
+    document.getElementById('md-cat').value = 'Diaria';
+    abrirModal('modal-despesa-overlay');
+    setTimeout(() => document.getElementById('md-desc').focus(), 200);
+}
+
+async function salvarDespesa() {
+    const descricao = document.getElementById('md-desc').value.trim();
+    const valor     = parseMoeda(document.getElementById('md-valor').value);
+    const categoria = document.getElementById('md-cat').value;
+    if (!descricao) { alert('Informe a descrição!'); return; }
+    if (!valor)     { alert('Informe o valor!');     return; }
+    const resp = await fetch('/api/despesas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ descricao, valor, categoria })
+    });
+    if (resp.ok) { fecharModal('modal-despesa-overlay'); carregarTudo(); }
+}
+
+function confirmarExcluirDespesa(id, desc) {
+    confirmar('💸', 'Excluir Despesa', `Deseja mesmo excluir <strong>${desc}</strong>?`, 'Sim, Excluir', async () => {
+        await fetch('/api/despesas/' + id, { method: 'DELETE' });
+        carregarTudo();
+    });
+}
+
+// Inicializa
+inicializarFiltros();
+carregarTudo();
+</script>
+{% endblock %}

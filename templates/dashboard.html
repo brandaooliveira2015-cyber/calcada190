@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .periodo-tabs { display: flex; gap: 6px; }
+    .periodo-tab { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg3); color: var(--muted); cursor: pointer; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.15s; }
+    .periodo-tab.active { background: var(--laranja); color: #fff; border-color: var(--laranja); }
+
+    .grafico-meta { display: flex; align-items: center; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
+    .grafico-meta-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+    .grafico-meta-cor { width: 10px; height: 10px; border-radius: 3px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title"><span>Dashboard</span> — Visão Geral</div>
+    <div class="periodo-tabs">
+        <div class="periodo-tab active" onclick="setPeriodo('hoje',this)">Hoje</div>
+        <div class="periodo-tab" onclick="setPeriodo('semana',this)">Semana</div>
+        <div class="periodo-tab" onclick="setPeriodo('mes',this)">Mês</div>
+    </div>
+</div>
+
+<div class="alerta-estoque" id="alerta-estoque-dash">
+    <h4>⚠️ Estoque mínimo atingido</h4>
+    <ul id="alerta-lista"></ul>
+</div>
+
+<!-- 4 CARDS: Faturamento, Custo, Lucro, Pedidos -->
+<div class="cards" style="grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));">
+    <div class="card verde">
+        <h3>Faturamento</h3>
+        <p id="d-faturamento">R$ 0,00</p>
+        <div class="sub" id="d-fat-sub">Hoje</div>
+    </div>
+    <div class="card vermelho">
+        <h3>Custo Produtos</h3>
+        <p id="d-custo">R$ 0,00</p>
+    </div>
+    <div class="card laranja">
+        <h3>Lucro Líquido</h3>
+        <p id="d-lucro-liquido">R$ 0,00</p>
+    </div>
+    <div class="card branco">
+        <h3>Total Pedidos</h3>
+        <p id="d-pedidos">0</p>
+    </div>
+</div>
+
+<!-- PIZZA + MAIS VENDIDOS -->
+<div class="charts-row">
+    <div class="section">
+        <div class="section-header"><h2>💳 Formas de Pagamento</h2></div>
+        <div class="chart-donut-wrap">
+            <canvas class="donut-canvas" id="donut-canvas" width="130" height="130"></canvas>
+            <div class="donut-legend" id="donut-legend"></div>
+        </div>
+    </div>
+    <div class="section">
+        <div class="section-header"><h2>🏆 Mais Vendidos</h2></div>
+        <div class="chart-bar" id="chart-top-produtos"></div>
+    </div>
+</div>
+
+<!-- GRÁFICO DE BARRAS MENSAL -->
+<div class="section">
+    <div class="section-header" style="align-items:flex-start">
+        <div>
+            <h2>📈 Faturamento Mensal — <span id="ano-label" style="color:var(--laranja)">2025</span></h2>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px">Janeiro a Dezembro · passe o mouse sobre a barra para detalhar</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+            <span id="total-ano" style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--verde)">—</span>
+            <span style="font-size:10px;color:var(--muted)">total no ano</span>
+        </div>
+    </div>
+
+    <div style="position:relative;width:100%;height:260px">
+        <canvas id="grafico-mensal"
+            role="img"
+            aria-label="Gráfico de barras com faturamento mensal de janeiro a dezembro">
+            Faturamento mensal do ano.
+        </canvas>
+    </div>
+
+    <div class="grafico-meta">
+        <div class="grafico-meta-item"><div class="grafico-meta-cor" style="background:#FF5500"></div> Meses anteriores</div>
+        <div class="grafico-meta-item"><div class="grafico-meta-cor" style="background:var(--verde)"></div> Mês atual</div>
+        <div class="grafico-meta-item"><div class="grafico-meta-cor" style="border:1px dashed rgba(255,255,255,0.2);border-radius:3px"></div> Sem dados ainda</div>
+    </div>
+</div>
+
+<!-- ÚLTIMOS PEDIDOS -->
+<div class="section">
+    <div class="section-header">
+        <h2>📋 Últimos Pedidos</h2>
+        <span style="font-size:11px;color:var(--muted)" id="d-atualizado">—</span>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Hora</th>
+                    <th>Mesa/Cliente</th>
+                    <th>Produto</th>
+                    <th>Qtd</th>
+                    <th>Total</th>
+                    <th>Lucro</th>
+                    <th>Pagamento</th>
+                    <th>Origem</th>
+                </tr>
+            </thead>
+            <tbody id="d-pedidos-lista"></tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let periodoAtual = 'hoje';
+
+function setPeriodo(p, el) {
+    periodoAtual = p;
+    document.querySelectorAll('.periodo-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    carregarDashboard();
+}
+
+// ── DONUT ────────────────────────────────────────────
+function desenharDonut(canvasId, legendId, dados) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const legend = document.getElementById(legendId);
+    const total = Object.values(dados).reduce((a, b) => a + b, 0);
+    const cores = { credito: '#4fc3f7', debito: '#1abc9c', dinheiro: '#00e676', pix: '#c39bd3' };
+    const labels = { credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro', pix: 'Pix' };
+    ctx.clearRect(0, 0, 130, 130);
+    const cx = 65, cy = 65, r = 50, ir = 33;
+    if (!total) {
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = r - ir; ctx.stroke();
+        if (legend) legend.innerHTML = '<div style="color:var(--muted);font-size:12px">Sem vendas ainda</div>';
+        return;
+    }
+    let start = -Math.PI / 2;
+    if (legend) legend.innerHTML = '';
+    Object.entries(dados).filter(([, v]) => v > 0).forEach(([f, v]) => {
+        const a = (v / total) * Math.PI * 2, cor = cores[f] || '#FF5500';
+        ctx.beginPath(); ctx.arc(cx, cy, r, start, start + a);
+        ctx.arc(cx, cy, ir, start + a, start, true);
+        ctx.closePath(); ctx.fillStyle = cor; ctx.fill(); start += a;
+        if (legend) legend.innerHTML += `<div class="donut-leg-item">
+            <div class="donut-leg-color" style="background:${cor}"></div>
+            <span class="donut-leg-label">${labels[f] || f}</span>
+            <span class="donut-leg-val">${fmt(v)}</span>
+        </div>`;
+    });
+    ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(cx, cy, ir - 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#777'; ctx.font = '10px Barlow'; ctx.textAlign = 'center'; ctx.fillText('Total', cx, cy - 4);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Barlow Condensed';
+    ctx.fillText(fmt(total).replace('R$ ', 'R$'), cx, cy + 9);
+}
+
+// ── TOP PRODUTOS ──────────────────────────────────────
+function renderTopProdutos(elId, lista) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!lista.length) {
+        el.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Sem dados</div>';
+        return;
+    }
+    const max = lista[0].total || 1;
+    const cores = ['#FF5500', '#ff7733', '#ff9955', '#ffbb88', '#ffd4bb'];
+    el.innerHTML = lista.slice(0, 5).map((p, i) => `
+        <div class="chart-bar-item">
+            <div class="chart-bar-label">
+                <span>${p.nome}</span>
+                <span class="qtd-info">${p.qtd} un.</span>
+                <span class="val-info">${fmt(p.total)}</span>
+            </div>
+            <div class="chart-bar-track">
+                <div class="chart-bar-fill" style="width:${(p.total / max) * 100}%;background:${cores[i]}"></div>
+            </div>
+        </div>`).join('');
+}
+
+// ── GRÁFICO MENSAL (Chart.js) ─────────────────────────
+let graficoMensalInstance = null;
+
+const MESES_LABEL = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function fmtEixo(v) {
+    if (v === 0) return 'R$ -';
+    if (v >= 1000000) return 'R$ ' + (v / 1000000).toFixed(1).replace('.', ',') + 'M';
+    if (v >= 1000) return 'R$ ' + (v / 1000).toFixed(0) + 'k';
+    return 'R$ ' + v;
+}
+
+function renderGraficoMensal(dados) {
+    const mesAtual = new Date().getMonth();
+    const anoAtual = new Date().getFullYear();
+    document.getElementById('ano-label').textContent = anoAtual;
+
+    const totalAno = dados.reduce((s, v) => s + v, 0);
+    document.getElementById('total-ano').textContent = fmt(totalAno);
+
+    const bgColors = dados.map((v, i) => {
+        if (v === 0) return 'rgba(255,255,255,0.06)';
+        if (i === mesAtual) return '#00e676';
+        return '#FF5500';
+    });
+
+    const config = {
+        type: 'bar',
+        data: {
+            labels: MESES_LABEL,
+            datasets: [{
+                data: dados,
+                backgroundColor: bgColors,
+                borderWidth: 0,
+                borderRadius: 5,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#2a2a2a',
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    borderWidth: 1,
+                    titleColor: '#aaa',
+                    bodyColor: '#fff',
+                    padding: 10,
+                    callbacks: {
+                        label: ctx => ' ' + fmtEixo(ctx.parsed.y)
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                    ticks: {
+                        color: '#666',
+                        font: { family: "'Barlow Condensed', sans-serif", size: 11, weight: '700' },
+                        maxRotation: 0,
+                        autoSkip: false
+                    },
+                    border: { display: false }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.06)', drawBorder: false },
+                    ticks: {
+                        color: '#555',
+                        font: { family: "'Barlow Condensed', sans-serif", size: 10 },
+                        callback: v => fmtEixo(v),
+                        maxTicksLimit: 6
+                    },
+                    border: { display: false }
+                }
+            }
+        }
+    };
+
+    if (graficoMensalInstance) {
+        graficoMensalInstance.data.datasets[0].data = dados;
+        graficoMensalInstance.data.datasets[0].backgroundColor = bgColors;
+        graficoMensalInstance.update();
+    } else {
+        const canvas = document.getElementById('grafico-mensal');
+        if (canvas) graficoMensalInstance = new Chart(canvas, config);
+    }
+}
+
+async function carregarGraficoMensal() {
+    try {
+        const anoAtual = new Date().getFullYear();
+        const resp = await fetch(`/api/dashboard/anual?ano=${anoAtual}`).then(r => r.json());
+        if (resp && resp.meses) {
+            renderGraficoMensal(resp.meses);
+            return;
+        }
+    } catch (e) {
+        console.warn('Erro ao carregar gráfico mensal:', e);
+    }
+    renderGraficoMensal(Array(12).fill(0));
+}
+
+// ── DASHBOARD PRINCIPAL ───────────────────────────────
+async function carregarDashboard() {
+    try {
+        const d = await fetch(`/api/dashboard?periodo=${periodoAtual}`).then(r => r.json());
+
+        document.getElementById('d-faturamento').textContent   = fmt(d.faturamento);
+        document.getElementById('d-custo').textContent         = fmt(d.custo_produtos);
+        document.getElementById('d-lucro-liquido').textContent = fmt(d.lucro_liquido);
+        document.getElementById('d-pedidos').textContent       = d.total_pedidos;
+        document.getElementById('d-fat-sub').textContent       = { hoje: 'Hoje', semana: 'Esta semana', mes: 'Este mês' }[periodoAtual];
+        document.getElementById('d-atualizado').textContent    = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        desenharDonut('donut-canvas', 'donut-legend', d.por_forma_pagamento || {});
+        renderTopProdutos('chart-top-produtos', d.top_produtos || []);
+
+        // Últimos pedidos
+        const pedidos = await fetch('/api/pedidos?limit=15').then(r => r.json());
+        const tbody = document.getElementById('d-pedidos-lista');
+        tbody.innerHTML = pedidos.length
+            ? pedidos.map(p => `<tr>
+                <td style="color:var(--muted);font-family:'Barlow Condensed',sans-serif">${p.data}</td>
+                <td>${p.mesa || '—'}</td>
+                <td style="font-weight:500">${p.produto_nome}</td>
+                <td>${p.quantidade}×</td>
+                <td style="color:var(--verde);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.total)}</td>
+                <td style="color:var(--laranja);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.lucro)}</td>
+                <td>${badgePag(p.forma_pagamento)}</td>
+                <td>${badgeOrigem(p.origem)}</td>
+              </tr>`).join('')
+            : '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Nenhum pedido ainda</td></tr>';
+
+        // Gráfico mensal
+        await carregarGraficoMensal();
+
+        // Alerta estoque
+        const prods = await fetch('/api/produtos').then(r => r.json());
+        const min = prods.filter(p => p.estoque_minimo > 0 && p.estoque <= p.estoque_minimo);
+        const alerta = document.getElementById('alerta-estoque-dash');
+        const badge = document.getElementById('badge-estoque');
+        if (min.length) {
+            alerta.style.display = 'block';
+            if (badge) { badge.style.display = 'inline'; badge.textContent = min.length; }
+            document.getElementById('alerta-lista').innerHTML = min.map(p =>
+                `<li>🍺 ${p.nome} (${p.estoque} restantes)</li>`).join('');
+        } else {
+            alerta.style.display = 'none';
+            if (badge) badge.style.display = 'none';
+        }
+
+    } catch (e) { console.error('Dashboard error:', e); }
+}
+
+carregarDashboard();
+setInterval(carregarDashboard, 30000);
+</script>
+{% endblock %}

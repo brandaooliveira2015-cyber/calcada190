@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calçada 190ML — Sistema de Gestão</title>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --laranja: #FF5500;
+            --laranja-dark: #cc4400;
+            --laranja-glow: rgba(255,85,0,0.12);
+            --verde: #00e676;
+            --vermelho: #ff3d3d;
+            --bg: #0f0f0f;
+            --bg2: #161616;
+            --bg3: #1e1e1e;
+            --bg4: #252525;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --muted: #777;
+            --sidebar-w: 235px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; display: flex; min-height: 100vh; font-size: 14px; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg2); }
+        ::-webkit-scrollbar-thumb { background: var(--laranja); border-radius: 2px; }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar { width: var(--sidebar-w); background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 100; }
+        .sidebar-logo { padding: 22px 20px 16px; border-bottom: 1px solid var(--border); }
+        .sidebar-logo h1 { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 900; color: var(--laranja); letter-spacing: 2px; text-transform: uppercase; }
+        .sidebar-logo p { color: #444; font-size: 10px; margin-top: 2px; letter-spacing: 1.5px; text-transform: uppercase; }
+        .sidebar-logo .data-hora { margin-top: 10px; font-size: 12px; color: var(--muted); font-weight: 500; }
+        .sidebar-menu { flex: 1; padding: 8px 0; overflow-y: auto; }
+        .menu-section { padding: 14px 20px 4px; font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #383838; font-weight: 700; }
+        .menu-item { display: flex; align-items: center; gap: 11px; padding: 10px 20px; cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 500; transition: all 0.15s; border-left: 3px solid transparent; }
+        .menu-item:hover { background: var(--bg3); color: var(--text); }
+        .menu-item.active { background: var(--laranja-glow); color: var(--laranja); border-left-color: var(--laranja); }
+        .menu-item .ico { font-size: 15px; min-width: 20px; text-align: center; }
+        .menu-badge { margin-left: auto; background: var(--vermelho); color: #fff; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 10px; display: none; }
+        .sidebar-footer { padding: 14px 20px; border-top: 1px solid var(--border); font-size: 11px; color: #444; display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-footer a { color: #555; text-decoration: none; font-size: 12px; transition: color 0.15s; }
+        .sidebar-footer a:hover { color: var(--vermelho); }
+
+        /* ===== MAIN ===== */
+        .main { margin-left: var(--sidebar-w); flex: 1; padding: 28px; min-height: 100vh; }
+        .page { display: none; animation: fadeIn 0.2s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+        .page-title { font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: 1px; text-transform: uppercase; }
+        .page-title span { color: var(--laranja); }
+
+        /* ===== CARDS ===== */
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .card { background: var(--bg3); border-radius: 10px; padding: 16px 18px; border: 1px solid var(--border); position: relative; overflow: hidden; }
+        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; }
+        .card.verde::before { background: var(--verde); }
+        .card.vermelho::before { background: var(--vermelho); }
+        .card.laranja::before { background: var(--laranja); }
+        .card.branco::before { background: #444; }
+        .card h3 { color: var(--muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .card p { font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 700; line-height: 1; }
+        .card.verde p { color: var(--verde); }
+        .card.vermelho p { color: var(--vermelho); }
+        .card.laranja p { color: var(--laranja); }
+        .card.branco p { color: var(--text); }
+        .card .sub { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+        /* ===== PERIODO TABS ===== */
+        .periodo-tabs { display: flex; gap: 6px; }
+        .periodo-tab { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg3); color: var(--muted); cursor: pointer; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.15s; }
+        .periodo-tab.active { background: var(--laranja); color: #fff; border-color: var(--laranja); }
+
+        /* ===== SECTIONS ===== */
+        .section { background: var(--bg3); border-radius: 10px; padding: 18px; margin-bottom: 16px; border: 1px solid var(--border); }
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
+        .section h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 1px; }
+
+        /* ===== CHARTS ===== */
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .chart-bar { display: flex; flex-direction: column; gap: 11px; }
+        .chart-bar-item { display: flex; flex-direction: column; gap: 4px; }
+        .chart-bar-label { display: flex; justify-content: space-between; font-size: 12px; gap: 8px; }
+        .chart-bar-label span:first-child { color: var(--text); font-weight: 500; flex: 1; }
+        .chart-bar-label .qtd-info { color: var(--muted); font-size: 11px; }
+        .chart-bar-label .val-info { color: var(--verde); font-weight: 700; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; }
+        .chart-bar-track { height: 5px; background: var(--bg4); border-radius: 3px; overflow: hidden; }
+        .chart-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+        .chart-donut-wrap { display: flex; align-items: center; gap: 20px; }
+        .donut-canvas { flex-shrink: 0; }
+        .donut-legend { flex: 1; display: flex; flex-direction: column; gap: 9px; }
+        .donut-leg-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+        .donut-leg-color { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+        .donut-leg-label { color: var(--text); flex: 1; }
+        .donut-leg-val { color: var(--verde); font-weight: 700; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; }
+
+        /* ===== TABLE ===== */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; color: var(--muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+        td { padding: 10px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        /* ===== FORMS ===== */
+        .form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; align-items: flex-end; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 120px; }
+        .form-group label { color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        input, select { background: var(--bg4); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; border-radius: 8px; width: 100%; font-size: 14px; font-family: 'Barlow', sans-serif; transition: border-color 0.15s; }
+        input:focus, select:focus { outline: none; border-color: var(--laranja); }
+        input::placeholder { color: #3a3a3a; }
+        .foto-preview { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; margin-top: 8px; display: none; border: 1px solid var(--border); }
+
+        /* ===== BUTTONS ===== */
+        .btn { background: var(--laranja); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; white-space: nowrap; letter-spacing: 0.5px; transition: all 0.15s; text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { background: var(--laranja-dark); transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+        .btn-secondary { background: var(--bg4); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #333; transform: none; }
+        .btn-danger { background: #c0392b; }
+        .btn-danger:hover { background: #a93226; }
+        .btn-green { background: #00a550; }
+        .btn-green:hover { background: #008a44; }
+        .btn-yellow { background: #d68910; }
+        .btn-yellow:hover { background: #b7770d; }
+        .btn-sm { padding: 5px 10px; font-size: 11px; }
+        .btn-icon { padding: 5px 9px; font-size: 12px; }
+
+        /* ===== BADGES ===== */
+        .badge { padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-cerveja { background: rgba(255,85,0,0.15); color: var(--laranja); }
+        .badge-drinks { background: rgba(155,89,182,0.15); color: #c39bd3; }
+        .badge-narguile { background: rgba(26,188,156,0.15); color: #1abc9c; }
+        .badge-porcao { background: rgba(230,126,34,0.15); color: #e67e22; }
+        .badge-outro { background: rgba(80,80,80,0.25); color: #999; }
+        .badge-fixo { background: rgba(231,76,60,0.15); color: #e74c3c; }
+        .badge-banda { background: rgba(52,152,219,0.15); color: #3498db; }
+        .badge-diaria { background: rgba(241,196,15,0.15); color: #f1c40f; }
+        .badge-compra { background: rgba(46,204,113,0.15); color: #2ecc71; }
+        .badge-dinheiro { background: rgba(46,204,113,0.15); color: #2ecc71; }
+        .badge-pix { background: rgba(155,89,182,0.15); color: #c39bd3; }
+        .badge-credito { background: rgba(52,152,219,0.15); color: #4fc3f7; }
+        .badge-debito { background: rgba(26,188,156,0.15); color: #1abc9c; }
+        .badge-pdv { background: rgba(255,85,0,0.12); color: var(--laranja); }
+        .badge-lio { background: rgba(52,152,219,0.12); color: #3498db; }
+
+        /* ===== ALERTA ESTOQUE ===== */
+        .alerta-estoque { background: rgba(255,61,61,0.08); border: 1px solid rgba(255,61,61,0.25); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: none; }
+        .alerta-estoque h4 { color: var(--vermelho); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .alerta-estoque ul { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+        .alerta-estoque ul li { background: rgba(255,61,61,0.12); color: #ffaaaa; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+        /* ===== PDV ===== */
+        .pdv-resumo { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+        .pdv-resumo-card { background: var(--bg4); border-radius: 8px; padding: 12px 14px; text-align: center; border: 1px solid var(--border); }
+        .pdv-resumo-card .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .pdv-resumo-card .val { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; color: var(--verde); }
+
+        .venda-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .venda-item:last-child { border-bottom: none; }
+        .venda-hora { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; color: var(--muted); min-width: 46px; }
+        .venda-info { flex: 1; }
+        .venda-info .nome { font-weight: 600; font-size: 13px; }
+        .venda-info .detalhe { font-size: 11px; color: var(--muted); margin-top: 2px; }
+        .venda-valor { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; color: var(--verde); }
+
+        /* ===== ESTOQUE BADGES ===== */
+        .estoque-badge { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+        .estoque-ok { background: rgba(0,230,118,0.12); color: var(--verde); }
+        .estoque-min { background: rgba(255,61,61,0.12); color: var(--vermelho); }
+        .estoque-zero { background: rgba(60,60,60,0.4); color: #555; }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state { text-align: center; padding: 36px 20px; color: var(--muted); }
+        .empty-state .ico { font-size: 36px; margin-bottom: 12px; opacity: 0.35; }
+        .empty-state p { font-size: 13px; line-height: 1.6; }
+
+        /* ===== FUNCIONARIOS ===== */
+        .func-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+        .func-card { background: var(--bg4); border-radius: 10px; padding: 16px; border: 1px solid var(--border); }
+        .func-card .func-nome { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
+        .func-card .func-id { font-size: 10px; color: var(--muted); font-family: monospace; background: var(--bg3); padding: 2px 7px; border-radius: 4px; display: inline-block; margin-bottom: 8px; }
+        .func-card .func-fat { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700; color: var(--verde); }
+        .func-card .func-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+        .func-rank { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .func-rank:last-child { border-bottom: none; }
+        .func-rank .pos { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 900; color: var(--laranja); min-width: 28px; }
+        .func-rank .info { flex: 1; }
+        .func-rank .info .nome { font-weight: 600; }
+        .func-rank .info .sub { font-size: 11px; color: var(--muted); }
+        .func-rank .fat { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; color: var(--verde); }
+
+        /* ===== FATURAMENTO ===== */
+        .fat-periodo-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+        .fat-periodo-card { background: var(--bg3); border-radius: 10px; padding: 18px; border: 1px solid var(--border); cursor: pointer; transition: all 0.15s; }
+        .fat-periodo-card.active, .fat-periodo-card:hover { border-color: var(--laranja); background: var(--laranja-glow); }
+        .fat-periodo-card h3 { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 7px; }
+        .fat-periodo-card p { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 700; color: var(--verde); }
+
+        /* ===== MODALS ===== */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 999; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.open { display: flex; }
+        .modal { background: var(--bg3); border: 1px solid var(--border); border-radius: 14px; padding: 26px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; position: relative; animation: modalIn 0.22s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.92) translateY(16px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .modal h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 18px; text-transform: uppercase; letter-spacing: 1px; }
+        .modal-close { position: absolute; top: 14px; right: 14px; background: var(--bg4); border: none; color: var(--muted); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+        .modal-close:hover { background: var(--vermelho); color: #fff; }
+        .modal-confirm { text-align: center; }
+        .modal-confirm .confirm-icon { font-size: 44px; margin-bottom: 14px; }
+        .modal-confirm p { color: var(--muted); font-size: 14px; margin-bottom: 22px; line-height: 1.6; }
+        .modal-confirm p strong { color: var(--text); }
+        .modal-confirm .confirm-btns { display: flex; gap: 10px; }
+        .modal-confirm .confirm-btns .btn { flex: 1; justify-content: center; }
+
+        /* ===== PDV BUSCA ===== */
+        .prod-search-wrap { position: relative; margin-bottom: 10px; }
+        .prod-search-results { position: absolute; top: 100%; left: 0; right: 0; background: var(--bg4); border: 1px solid var(--border); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 10; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.5); margin-top: 2px; }
+        .prod-search-results.open { display: block; }
+        .prod-result-item { padding: 10px 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.1s; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .prod-result-item:last-child { border-bottom: none; }
+        .prod-result-item:hover { background: var(--bg3); }
+        .prod-result-item .nome { font-weight: 500; font-size: 13px; }
+        .prod-result-item .preco { color: var(--verde); font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 14px; }
+
+        /* ===== CARRINHO ===== */
+        .modal-itens { min-height: 50px; margin: 10px 0; }
+        .modal-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+        .modal-item:last-child { border-bottom: none; }
+        .modal-item .nome { flex: 1; font-weight: 500; }
+        .modal-item .qtd-ctrl { display: flex; align-items: center; gap: 6px; }
+        .qtd-btn { width: 26px; height: 26px; background: var(--bg4); border: 1px solid var(--border); color: var(--text); border-radius: 6px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+        .qtd-btn:hover { background: var(--laranja); border-color: var(--laranja); }
+        .modal-item .subtotal { color: var(--verde); font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700; min-width: 68px; text-align: right; }
+        .modal-item .rm { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 4px; transition: color 0.1s; }
+        .modal-item .rm:hover { color: var(--vermelho); }
+        .modal-total-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0 6px; border-top: 1px solid var(--border); }
+        .modal-total-label { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+        .modal-total-val { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 700; color: var(--verde); }
+
+        /* ===== FORMA DE PAGAMENTO ===== */
+        .forma-pag { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+        .forma-btn { flex: 1; min-width: 75px; padding: 10px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg4); color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 700; text-align: center; transition: all 0.15s; text-transform: uppercase; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.5px; }
+        .forma-btn.selected { border-color: var(--laranja); color: var(--laranja); background: var(--laranja-glow); }
+        .forma-btn:hover { border-color: #444; color: var(--text); }
+
+        /* ===== MODAL SUCESSO ===== */
+        .modal-sucesso { text-align: center; max-width: 400px; }
+        .modal-sucesso .check-circle { width: 68px; height: 68px; background: rgba(0,230,118,0.1); border: 2px solid var(--verde); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 18px; animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+        .modal-sucesso h2 { color: var(--verde); margin-bottom: 4px; }
+        .modal-sucesso .detalhe { background: var(--bg4); border-radius: 8px; padding: 12px 16px; margin: 14px 0; text-align: left; }
+        .modal-sucesso .detalhe .item-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .modal-sucesso .detalhe .item-row:last-of-type { border-bottom: none; }
+        .modal-sucesso .detalhe .meta-row { font-size: 11px; color: var(--muted); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+        .modal-sucesso .detalhe .meta-row span { color: var(--text); font-weight: 600; }
+        .modal-sucesso .total-final { font-family: 'Barlow Condensed', sans-serif; font-size: 34px; font-weight: 700; color: var(--verde); margin-top: 8px; }
+
+        .lio-status { font-size: 12px; text-align: center; margin-top: 8px; color: var(--muted); min-height: 18px; }
+        .lio-status.ok { color: var(--verde); }
+        .lio-status.aviso { color: var(--laranja); }
+
+        /* ===== TOGGLE DISPONIBILIDADE ===== */
+        .toggle-wrap { display: flex; align-items: center; gap: 7px; }
+        .toggle-switch { position: relative; width: 38px; height: 21px; flex-shrink: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+        .toggle-slider { position: absolute; inset: 0; background: #333; border-radius: 21px; cursor: pointer; transition: background 0.2s; border: 1px solid #444; }
+        .toggle-slider::before { content: ''; position: absolute; width: 15px; height: 15px; left: 2px; top: 2px; background: #666; border-radius: 50%; transition: all 0.2s; }
+        .toggle-switch input:checked + .toggle-slider { background: rgba(0,230,118,0.2); border-color: var(--verde); }
+        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(17px); background: var(--verde); }
+        .toggle-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+        .toggle-label.on  { color: var(--verde); }
+        .toggle-label.off { color: var(--vermelho); }
+
+        @media (max-width: 900px) {
+            .charts-row { grid-template-columns: 1fr; }
+            .pdv-resumo { grid-template-columns: repeat(2, 1fr); }
+            .fat-periodo-cards { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ========== SIDEBAR ========== -->
+<div class="sidebar">
+    <div class="sidebar-logo">
+        <h1>CALÇADA 190ML</h1>
+        <p>Sistema de Gestão</p>
+        <div class="data-hora" id="data-hora">—</div>
+    </div>
+    <div class="sidebar-menu">
+        <div class="menu-section">Principal</div>
+        <div class="menu-item active" onclick="irPara('dashboard',this)"><span class="ico">📊</span> Dashboard</div>
+        <div class="menu-item" onclick="irPara('pdv',this)"><span class="ico">🛒</span> PDV Caixa</div>
+        <div class="menu-section">Gerenciamento</div>
+        <div class="menu-item" onclick="irPara('produtos',this)"><span class="ico">🍺</span> Produtos <span class="menu-badge" id="badge-estoque">!</span></div>
+        <div class="menu-item" onclick="irPara('despesas',this)"><span class="ico">💸</span> Despesas</div>
+        <div class="menu-item" onclick="irPara('pedidos',this)"><span class="ico">📋</span> Pedidos do Dia</div>
+        <div class="menu-item" onclick="irPara('faturamento',this)"><span class="ico">💰</span> Faturamento</div>
+        <div class="menu-item" onclick="irPara('funcionarios',this)"><span class="ico">👥</span> Funcionários</div>
+    </div>
+    <div class="sidebar-footer">
+        <span>Calcada 190 © 2025</span>
+        <a href="/logout">🚪 Sair</a>
+    </div>
+</div>
+
+<!-- ========== MAIN ========== -->
+<div class="main">
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+    <div class="page-header">
+        <div class="page-title"><span>Dashboard</span> — Visão Geral</div>
+        <div class="periodo-tabs">
+            <div class="periodo-tab active" onclick="setPeriodo('hoje',this)">Hoje</div>
+            <div class="periodo-tab" onclick="setPeriodo('semana',this)">Semana</div>
+            <div class="periodo-tab" onclick="setPeriodo('mes',this)">Mês</div>
+        </div>
+    </div>
+    <div class="alerta-estoque" id="alerta-estoque-dash"><h4>⚠️ Estoque mínimo atingido</h4><ul id="alerta-lista"></ul></div>
+    <div class="cards">
+        <div class="card verde"><h3>Faturamento</h3><p id="d-faturamento">R$ 0,00</p><div class="sub" id="d-fat-sub">Hoje</div></div>
+        <div class="card vermelho"><h3>Custo Produtos</h3><p id="d-custo">R$ 0,00</p></div>
+        <div class="card vermelho"><h3>Despesas</h3><p id="d-despesas">R$ 0,00</p></div>
+        <div class="card verde"><h3>Lucro Bruto</h3><p id="d-lucro-bruto">R$ 0,00</p></div>
+        <div class="card laranja"><h3>Lucro Líquido</h3><p id="d-lucro-liquido">R$ 0,00</p></div>
+        <div class="card branco"><h3>Total Pedidos</h3><p id="d-pedidos">0</p></div>
+    </div>
+    <div class="charts-row">
+        <div class="section">
+            <div class="section-header"><h2>💳 Formas de Pagamento</h2></div>
+            <div class="chart-donut-wrap">
+                <canvas class="donut-canvas" id="donut-canvas" width="130" height="130"></canvas>
+                <div class="donut-legend" id="donut-legend"></div>
+            </div>
+        </div>
+        <div class="section">
+            <div class="section-header"><h2>🏆 Mais Vendidos</h2></div>
+            <div class="chart-bar" id="chart-top-produtos"></div>
+        </div>
+    </div>
+    <div class="section">
+        <div class="section-header">
+            <h2>📋 Últimos Pedidos</h2>
+            <span style="font-size:11px;color:var(--muted)" id="d-atualizado">—</span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Hora</th><th>Mesa/Cliente</th><th>Produto</th><th>Qtd</th><th>Total</th><th>Lucro</th><th>Pagamento</th><th>Origem</th></tr></thead>
+                <tbody id="d-pedidos-lista"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- PDV -->
+<div class="page" id="page-pdv">
+    <div class="page-header">
+        <div class="page-title"><span>PDV</span> — Caixa Fixo</div>
+        <button class="btn" onclick="abrirModalVenda()">＋ Nova Venda</button>
+    </div>
+    <div class="pdv-resumo">
+        <div class="pdv-resumo-card"><div class="label">Faturado Hoje</div><div class="val" id="pdv-fat">R$ 0,00</div></div>
+        <div class="pdv-resumo-card"><div class="label">Vendas PDV</div><div class="val" id="pdv-qtd">0</div></div>
+        <div class="pdv-resumo-card"><div class="label">Ticket Médio</div><div class="val" id="pdv-ticket">R$ 0,00</div></div>
+        <div class="pdv-resumo-card"><div class="label">Lucro Est.</div><div class="val" id="pdv-lucro" style="color:var(--laranja)">R$ 0,00</div></div>
+    </div>
+    <div class="section">
+        <div class="section-header"><h2>🧾 Vendas do Dia — PDV</h2></div>
+        <div id="pdv-lista-vendas">
+            <div class="empty-state"><div class="ico">🛒</div><p>Nenhuma venda ainda hoje.<br>Clique em <strong>+ Nova Venda</strong> para começar.</p></div>
+        </div>
+    </div>
+</div>
+
+<!-- PRODUTOS -->
+<div class="page" id="page-produtos">
+    <div class="page-header">
+        <div class="page-title"><span>Produtos</span></div>
+        <button class="btn" onclick="abrirModalProduto()">＋ Cadastrar Produto</button>
+    </div>
+    <div class="alerta-estoque" id="alerta-estoque-prod"><h4>⚠️ Produtos com estoque baixo</h4><ul id="alerta-prod-lista"></ul></div>
+    <div class="section">
+        <div class="section-header">
+            <h2>📦 Produtos Cadastrados</h2>
+            <input type="text" id="busca-produto" placeholder="🔍 Buscar produto..." style="width:200px;padding:8px 12px;font-size:13px" oninput="filtrarListaProdutos(this.value)">
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Foto</th><th>Nome</th><th>Categoria</th><th>Venda</th><th>Custo</th><th>Margem</th><th>Estoque</th><th>Mín.</th><th>Disponível</th><th>Ações</th></tr></thead>
+                <tbody id="lista-produtos"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- DESPESAS -->
+<div class="page" id="page-despesas">
+    <div class="page-header">
+        <div class="page-title"><span>Despesas</span></div>
+        <button class="btn" onclick="abrirModalDespesa()">＋ Registrar Despesa</button>
+    </div>
+    <div class="cards">
+        <div class="card vermelho"><h3>Total de Hoje</h3><p id="desp-total">R$ 0,00</p></div>
+    </div>
+    <div class="section">
+        <div class="section-header"><h2>📋 Despesas de Hoje</h2></div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Hora</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Ações</th></tr></thead>
+                <tbody id="lista-despesas"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- PEDIDOS DO DIA -->
+<div class="page" id="page-pedidos">
+    <div class="page-header">
+        <div class="page-title"><span>Pedidos</span> do Dia</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select id="filtro-origem" onchange="carregarPedidos()" style="width:150px;padding:8px 10px">
+                <option value="">Todas origens</option>
+                <option value="pdv">PDV Caixa</option>
+                <option value="lio">Maquininha LIO</option>
+            </select>
+            <select id="filtro-pag" onchange="carregarPedidos()" style="width:150px;padding:8px 10px">
+                <option value="">Todos pagamentos</option>
+                <option value="dinheiro">Dinheiro</option>
+                <option value="pix">Pix</option>
+                <option value="credito">Crédito</option>
+                <option value="debito">Débito</option>
+            </select>
+        </div>
+    </div>
+    <div class="cards">
+        <div class="card verde"><h3>Total Faturado</h3><p id="ped-fat">R$ 0,00</p></div>
+        <div class="card laranja"><h3>Lucro Bruto</h3><p id="ped-lucro">R$ 0,00</p></div>
+        <div class="card branco"><h3>Itens Vendidos</h3><p id="ped-qtd">0</p></div>
+    </div>
+    <div class="section">
+        <div class="section-header"><h2>📋 Resumo por Produto</h2></div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Produto</th><th>Qtd.</th><th>Total</th><th>Lucro</th><th>Pagamento</th><th>Origem</th></tr></thead>
+                <tbody id="lista-pedidos"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- FATURAMENTO -->
+<div class="page" id="page-faturamento">
+    <div class="page-header">
+        <div class="page-title"><span>Faturamento</span></div>
+        <button class="btn btn-secondary" onclick="exportarPDF()">⬇ Exportar PDF</button>
+    </div>
+    <div class="fat-periodo-cards">
+        <div class="fat-periodo-card active" onclick="setFatPeriodo('hoje',this)"><h3>Hoje</h3><p id="fat-hoje-val">R$ 0,00</p></div>
+        <div class="fat-periodo-card" onclick="setFatPeriodo('semana',this)"><h3>Esta Semana</h3><p id="fat-semana-val">R$ 0,00</p></div>
+        <div class="fat-periodo-card" onclick="setFatPeriodo('mes',this)"><h3>Este Mês</h3><p id="fat-mes-val">R$ 0,00</p></div>
+    </div>
+    <div class="cards">
+        <div class="card verde"><h3>Faturamento</h3><p id="fat-d-fat">R$ 0,00</p></div>
+        <div class="card verde"><h3>Lucro Bruto</h3><p id="fat-d-lucro-bruto">R$ 0,00</p></div>
+        <div class="card laranja"><h3>Lucro Líquido</h3><p id="fat-d-lucro-liq">R$ 0,00</p></div>
+        <div class="card vermelho"><h3>Custo Produtos</h3><p id="fat-d-custo">R$ 0,00</p></div>
+        <div class="card vermelho"><h3>Despesas</h3><p id="fat-d-desp">R$ 0,00</p></div>
+        <div class="card branco"><h3>Pedidos</h3><p id="fat-d-pedidos">0</p></div>
+    </div>
+    <div class="charts-row">
+        <div class="section">
+            <div class="section-header"><h2>💳 Pagamentos no Período</h2></div>
+            <div class="chart-donut-wrap">
+                <canvas id="fat-donut" width="130" height="130"></canvas>
+                <div class="donut-legend" id="fat-donut-legend"></div>
+            </div>
+        </div>
+        <div class="section">
+            <div class="section-header"><h2>🏆 Mais Vendidos</h2></div>
+            <div class="chart-bar" id="fat-top-prod"></div>
+        </div>
+    </div>
+    <div class="section">
+        <div class="section-header"><h2>📋 Pedidos do Período</h2></div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Data/Hora</th><th>Mesa</th><th>Produto</th><th>Qtd</th><th>Total</th><th>Pagamento</th><th>Origem</th></tr></thead>
+                <tbody id="fat-pedidos-lista"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- FUNCIONÁRIOS -->
+<div class="page" id="page-funcionarios">
+    <div class="page-header">
+        <div class="page-title"><span>Funcionários</span></div>
+        <div style="display:flex;gap:8px">
+            <button class="btn btn-danger" onclick="confirmarFecharCaixa()">🔒 Fechar Caixa</button>
+            <button class="btn" onclick="abrirModalFuncionario()">＋ Cadastrar</button>
+        </div>
+    </div>
+    <div class="charts-row">
+        <div class="section">
+            <div class="section-header"><h2>🏆 Ranking de Vendas — Hoje</h2></div>
+            <div id="func-ranking"><div class="empty-state"><div class="ico">👥</div><p>Nenhum dado ainda</p></div></div>
+        </div>
+        <div class="section">
+            <div class="section-header"><h2>👥 Funcionários</h2></div>
+            <div class="func-grid" id="func-grid"><div class="empty-state"><div class="ico">👥</div><p>Nenhum funcionário cadastrado</p></div></div>
+        </div>
+    </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- ========== MODAL NOVA VENDA ========== -->
+<div class="modal-overlay" id="modal-venda-overlay">
+    <div class="modal">
+        <button class="modal-close" onclick="fecharModal('modal-venda-overlay')">✕</button>
+        <h2>🛒 Nova Venda</h2>
+        <div class="form-group" style="margin-bottom:14px">
+            <label>Mesa / Cliente</label>
+            <input type="text" id="m-mesa" placeholder="Ex: Mesa 5 ou João">
+        </div>
+        <div class="form-group" style="margin-bottom:4px">
+            <label>Adicionar Produto</label>
+            <div class="prod-search-wrap">
+                <input type="text" id="m-busca-prod" placeholder="Digite o nome do produto..." autocomplete="off">
+                <div class="prod-search-results" id="m-resultados"></div>
+            </div>
+        </div>
+        <div class="modal-itens" id="m-itens">
+            <div class="empty-state" style="padding:18px"><p style="font-size:12px">Busque produtos acima e clique para adicionar</p></div>
+        </div>
+        <div class="modal-total-row">
+            <span class="modal-total-label">Total da Venda</span>
+            <span class="modal-total-val" id="m-total">R$ 0,00</span>
+        </div>
+        <div style="margin-top:12px">
+            <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px">Forma de Pagamento</label>
+            <div class="forma-pag">
+                <div class="forma-btn selected" onclick="selForma('credito',this)">💳 Crédito</div>
+                <div class="forma-btn" onclick="selForma('debito',this)">💳 Débito</div>
+                <div class="forma-btn" onclick="selForma('dinheiro',this)">💵 Dinheiro</div>
+                <div class="forma-btn" onclick="selForma('pix',this)">📱 Pix</div>
+            </div>
+        </div>
+        <div class="lio-status" id="lio-status"></div>
+        <button class="btn btn-green" style="width:100%;padding:13px;font-size:16px;margin-top:10px;justify-content:center" onclick="finalizarVenda()">✅ FINALIZAR VENDA</button>
+    </div>
+</div>
+
+<!-- ========== MODAL SUCESSO ========== -->
+<div class="modal-overlay" id="modal-sucesso-overlay">
+    <div class="modal modal-sucesso">
+        <div class="check-circle">✓</div>
+        <h2>Venda Finalizada!</h2>
+        <div class="detalhe" id="sucesso-detalhe"></div>
+        <div class="total-final" id="sucesso-total"></div>
+        <button class="btn" style="width:100%;margin-top:16px;justify-content:center" onclick="fecharModal('modal-sucesso-overlay')">Fechar</button>
+    </div>
+</div>
+
+<!-- ========== MODAL PRODUTO ========== -->
+<div class="modal-overlay" id="modal-produto-overlay">
+    <div class="modal">
+        <button class="modal-close" onclick="fecharModal('modal-produto-overlay')">✕</button>
+        <h2 id="modal-prod-titulo">🍺 Cadastrar Produto</h2>
+        <input type="hidden" id="mp-id">
+        <div class="form-row">
+            <div class="form-group" style="flex:2">
+                <label>Nome do Produto</label>
+                <input type="text" id="mp-nome" placeholder="EX: HEINEKEN LONG NECK" oninput="this.value=this.value.toUpperCase()">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Preço de Venda</label>
+                <input type="text" id="mp-venda" placeholder="R$ 0,00" oninput="mascaraPreco(this)" inputmode="numeric">
+            </div>
+            <div class="form-group">
+                <label>Preço de Custo</label>
+                <input type="text" id="mp-custo" placeholder="R$ 0,00" oninput="mascaraPreco(this)" inputmode="numeric">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Categoria</label>
+                <select id="mp-categoria">
+                    <option value="Cerveja">🍺 Cerveja</option>
+                    <option value="Drinks">🍹 Drinks</option>
+                    <option value="Narguile">💨 Narguile</option>
+                    <option value="Porcao">🍗 Porção</option>
+                    <option value="Outro">📦 Outro</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Estoque Inicial</label>
+                <input type="number" id="mp-estoque" placeholder="0" min="0">
+            </div>
+            <div class="form-group">
+                <label>Estoque Mínimo</label>
+                <input type="number" id="mp-estoque-min" placeholder="0" min="0">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Foto do Produto</label>
+                <input type="file" id="mp-foto" accept="image/*" onchange="previewFotoModal(this)">
+                <img id="mp-foto-preview" class="foto-preview">
+            </div>
+        </div>
+        <button class="btn" style="width:100%;justify-content:center;padding:13px;font-size:15px;margin-top:4px" onclick="salvarProduto()">💾 Salvar Produto</button>
+    </div>
+</div>
+
+<!-- ========== MODAL DESPESA ========== -->
+<div class="modal-overlay" id="modal-despesa-overlay">
+    <div class="modal" style="max-width:460px">
+        <button class="modal-close" onclick="fecharModal('modal-despesa-overlay')">✕</button>
+        <h2>💸 Registrar Despesa</h2>
+        <div class="form-group" style="margin-bottom:14px">
+            <label>Descrição</label>
+            <input type="text" id="md-desc" placeholder="Ex: Pagamento DJ, Compra de gelo...">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Valor</label>
+                <input type="text" id="md-valor" placeholder="R$ 0,00" oninput="mascaraPreco(this)" inputmode="numeric">
+            </div>
+            <div class="form-group">
+                <label>Categoria</label>
+                <select id="md-cat">
+                    <option value="Diaria">👷 Diária de Funcionário</option>
+                    <option value="Banda">🎵 Banda / DJ</option>
+                    <option value="Fixo">🏠 Custo Fixo</option>
+                    <option value="Compra">📦 Compra de Estoque</option>
+                    <option value="Outro">📌 Outro</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn" style="width:100%;justify-content:center;padding:13px;font-size:15px;margin-top:4px" onclick="salvarDespesa()">💾 Registrar</button>
+    </div>
+</div>
+
+<!-- ========== MODAL FUNCIONÁRIO ========== -->
+<div class="modal-overlay" id="modal-func-overlay">
+    <div class="modal" style="max-width:440px">
+        <button class="modal-close" onclick="fecharModal('modal-func-overlay')">✕</button>
+        <h2>👤 Cadastrar Funcionário</h2>
+        <div class="form-group" style="margin-bottom:14px">
+            <label>Nome</label>
+            <input type="text" id="mf-nome" placeholder="Ex: Eduardo">
+        </div>
+        <div class="form-group" style="margin-bottom:14px">
+            <label>Função</label>
+            <select id="mf-funcao">
+                <option value="Vendedor">Vendedor (Pista)</option>
+                <option value="Caixa">Caixa Fixo</option>
+                <option value="Gerente">Gerente</option>
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom:20px">
+            <label>ID da Maquininha LIO</label>
+            <input type="text" id="mf-lio-id" placeholder="Ex: EC0123456789">
+            <small style="color:var(--muted);font-size:11px;margin-top:5px;display:block;line-height:1.5">
+                📍 Encontre em: <strong>Configurações da LIO → Sobre → Nº de série</strong><br>
+                Ou em <strong>mpos.cielo.com.br → Meu negócio → Maquininhas</strong>
+            </small>
+        </div>
+        <button class="btn" style="width:100%;justify-content:center;padding:13px;font-size:15px" onclick="salvarFuncionario()">💾 Salvar</button>
+    </div>
+</div>
+
+<!-- ========== MODAL CONFIRMAR ========== -->
+<div class="modal-overlay" id="modal-confirm-overlay">
+    <div class="modal modal-confirm" style="max-width:380px">
+        <div class="confirm-icon" id="confirm-icon">🗑</div>
+        <h2 id="confirm-titulo">Confirmar</h2>
+        <p id="confirm-msg">Deseja mesmo realizar esta ação?</p>
+        <div class="confirm-btns">
+            <button class="btn btn-secondary" style="justify-content:center" onclick="fecharModal('modal-confirm-overlay')">Cancelar</button>
+            <button class="btn btn-danger" style="justify-content:center" id="confirm-ok-btn">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ================================================
+// ESTADO GLOBAL
+// ================================================
+let todosProdutos = [];
+let todosProdsLista = [];
+let carrinhoModal = [];
+let formaPagModal = 'credito';
+let periodoAtual = 'hoje';
+let fatPeriodoAtual = 'hoje';
+let funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
+
+// ================================================
+// RELÓGIO
+// ================================================
+function tick() {
+    const n = new Date();
+    const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    document.getElementById('data-hora').textContent =
+        `${dias[n.getDay()]}, ${n.getDate()} ${meses[n.getMonth()]} — ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+}
+tick(); setInterval(tick, 30000);
+
+// ================================================
+// NAVEGAÇÃO
+// ================================================
+function irPara(pag, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+    document.getElementById('page-' + pag).classList.add('active');
+    if (el) el.classList.add('active');
+    const mapa = {
+        dashboard: carregarDashboard,
+        pdv: carregarVendasPDV,
+        produtos: () => { carregarProdutos(); verificarEstoque(); },
+        despesas: carregarDespesas,
+        pedidos: carregarPedidos,
+        faturamento: carregarFaturamento,
+        funcionarios: carregarFuncionarios
+    };
+    if (mapa[pag]) mapa[pag]();
+}
+
+function setPeriodo(p, el) {
+    periodoAtual = p;
+    document.querySelectorAll('.periodo-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    carregarDashboard();
+}
+
+// ================================================
+// UTILS
+// ================================================
+function fmt(v) {
+    return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+function mascaraPreco(input) {
+    let v = input.value.replace(/\D/g, '');
+    if (!v) { input.value = ''; return; }
+    input.value = 'R$ ' + (parseInt(v) / 100).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+function parseMoeda(s) {
+    return parseFloat((s || '').replace('R$ ', '').replace(/\./g, '').replace(',', '.')) || 0;
+}
+function badgePag(f) {
+    const m = { dinheiro: ['badge-dinheiro', '💵 Dinheiro'], pix: ['badge-pix', '📱 Pix'], credito: ['badge-credito', '💳 Crédito'], debito: ['badge-debito', '💳 Débito'] };
+    const [cls, label] = m[f] || ['badge-outro', f];
+    return `<span class="badge ${cls}">${label}</span>`;
+}
+function badgeOrigem(o) {
+    return o === 'pdv' ? '<span class="badge badge-pdv">PDV</span>' : '<span class="badge badge-lio">LIO</span>';
+}
+
+// ================================================
+// MODAL HELPERS
+// ================================================
+function abrirModal(id) { document.getElementById(id).classList.add('open'); }
+function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+    o.addEventListener('click', e => { if (e.target === o) fecharModal(o.id); });
+});
+function confirmar(icone, titulo, msg, labelOk, onOk) {
+    document.getElementById('confirm-icon').textContent = icone;
+    document.getElementById('confirm-titulo').textContent = titulo;
+    document.getElementById('confirm-msg').innerHTML = msg;
+    const btn = document.getElementById('confirm-ok-btn');
+    btn.textContent = labelOk || 'Confirmar';
+    btn.onclick = () => { fecharModal('modal-confirm-overlay'); onOk(); };
+    abrirModal('modal-confirm-overlay');
+}
+
+// ================================================
+// DASHBOARD
+// ================================================
+async function carregarDashboard() {
+    try {
+        const d = await fetch(`/api/dashboard?periodo=${periodoAtual}`).then(r => r.json());
+        document.getElementById('d-faturamento').textContent = fmt(d.faturamento);
+        document.getElementById('d-custo').textContent = fmt(d.custo_produtos);
+        document.getElementById('d-despesas').textContent = fmt(d.total_despesas);
+        document.getElementById('d-lucro-bruto').textContent = fmt(d.lucro_bruto);
+        document.getElementById('d-lucro-liquido').textContent = fmt(d.lucro_liquido);
+        document.getElementById('d-pedidos').textContent = d.total_pedidos;
+        document.getElementById('d-fat-sub').textContent = { hoje: 'Hoje', semana: 'Esta semana', mes: 'Este mês' }[periodoAtual];
+        document.getElementById('d-atualizado').textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        desenharDonut('donut-canvas', 'donut-legend', d.por_forma_pagamento || {});
+        renderTopProdutos('chart-top-produtos', d.top_produtos || []);
+        const pedidos = await fetch('/api/pedidos?limit=15').then(r => r.json());
+        const tbody = document.getElementById('d-pedidos-lista');
+        tbody.innerHTML = pedidos.length
+            ? pedidos.map(p => `<tr>
+                <td style="color:var(--muted);font-family:'Barlow Condensed',sans-serif">${p.data}</td>
+                <td>${p.mesa || '—'}</td>
+                <td style="font-weight:500">${p.produto_nome}</td>
+                <td>${p.quantidade}×</td>
+                <td style="color:var(--verde);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.total)}</td>
+                <td style="color:var(--laranja);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.lucro)}</td>
+                <td>${badgePag(p.forma_pagamento)}</td>
+                <td>${badgeOrigem(p.origem)}</td>
+              </tr>`).join('')
+            : '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Nenhum pedido ainda</td></tr>';
+        verificarEstoqueDash();
+    } catch (e) { console.error('Dashboard error:', e); }
+}
+
+function desenharDonut(canvasId, legendId, dados) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const legend = document.getElementById(legendId);
+    const total = Object.values(dados).reduce((a, b) => a + b, 0);
+    const cores = { credito: '#4fc3f7', debito: '#1abc9c', dinheiro: '#00e676', pix: '#c39bd3' };
+    const labels = { credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro', pix: 'Pix' };
+    ctx.clearRect(0, 0, 130, 130);
+    const cx = 65, cy = 65, r = 50, ir = 33;
+    if (!total) {
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = r - ir; ctx.stroke();
+        if (legend) legend.innerHTML = '<div style="color:var(--muted);font-size:12px">Sem vendas ainda</div>';
+        return;
+    }
+    let start = -Math.PI / 2;
+    if (legend) legend.innerHTML = '';
+    Object.entries(dados).filter(([, v]) => v > 0).forEach(([f, v]) => {
+        const a = (v / total) * Math.PI * 2, cor = cores[f] || '#FF5500';
+        ctx.beginPath(); ctx.arc(cx, cy, r, start, start + a); ctx.arc(cx, cy, ir, start + a, start, true);
+        ctx.closePath(); ctx.fillStyle = cor; ctx.fill(); start += a;
+        if (legend) legend.innerHTML += `<div class="donut-leg-item"><div class="donut-leg-color" style="background:${cor}"></div><span class="donut-leg-label">${labels[f] || f}</span><span class="donut-leg-val">${fmt(v)}</span></div>`;
+    });
+    ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(cx, cy, ir - 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#777'; ctx.font = '10px Barlow'; ctx.textAlign = 'center'; ctx.fillText('Total', cx, cy - 4);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Barlow Condensed'; ctx.fillText(fmt(total).replace('R$ ', 'R$'), cx, cy + 9);
+}
+
+function renderTopProdutos(elId, lista) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!lista.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Sem dados</div>'; return; }
+    const max = lista[0].total || 1;
+    const cores = ['#FF5500', '#ff7733', '#ff9955', '#ffbb88', '#ffd4bb'];
+    el.innerHTML = lista.slice(0, 5).map((p, i) => `
+        <div class="chart-bar-item">
+            <div class="chart-bar-label">
+                <span>${p.nome}</span>
+                <span class="qtd-info">${p.qtd} un.</span>
+                <span class="val-info">${fmt(p.total)}</span>
+            </div>
+            <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${(p.total / max) * 100}%;background:${cores[i]}"></div></div>
+        </div>`).join('');
+}
+
+async function verificarEstoqueDash() {
+    const prods = await fetch('/api/produtos').then(r => r.json()).catch(() => []);
+    const min = prods.filter(p => p.estoque_minimo > 0 && p.estoque <= p.estoque_minimo);
+    const alerta = document.getElementById('alerta-estoque-dash');
+    const badge = document.getElementById('badge-estoque');
+    if (min.length) {
+        alerta.style.display = 'block'; badge.style.display = 'inline'; badge.textContent = min.length;
+        document.getElementById('alerta-lista').innerHTML = min.map(p => `<li>🍺 ${p.nome} (${p.estoque} restantes)</li>`).join('');
+    } else { alerta.style.display = 'none'; badge.style.display = 'none'; }
+}
+
+// ================================================
+// PDV
+// ================================================
+async function carregarVendasPDV() {
+    const pedidos = await fetch('/api/pedidos?origem=pdv').then(r => r.json()).catch(() => []);
+    const fat = pedidos.reduce((s, p) => s + p.total, 0);
+    const lucro = pedidos.reduce((s, p) => s + p.lucro, 0);
+    const ticket = pedidos.length ? fat / pedidos.length : 0;
+    document.getElementById('pdv-fat').textContent = fmt(fat);
+    document.getElementById('pdv-qtd').textContent = pedidos.length;
+    document.getElementById('pdv-ticket').textContent = fmt(ticket);
+    document.getElementById('pdv-lucro').textContent = fmt(lucro);
+    const c = document.getElementById('pdv-lista-vendas');
+    if (!pedidos.length) {
+        c.innerHTML = '<div class="empty-state"><div class="ico">🛒</div><p>Nenhuma venda ainda hoje.<br>Clique em <strong>+ Nova Venda</strong> para começar.</p></div>';
+        return;
+    }
+    c.innerHTML = pedidos.map(p => `
+        <div class="venda-item">
+            <div class="venda-hora">${p.data}</div>
+            <div class="venda-info">
+                <div class="nome">${p.produto_nome}</div>
+                <div class="detalhe">${p.quantidade}× &bull; ${p.mesa || 'Caixa'}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+                ${badgePag(p.forma_pagamento)}
+                <div class="venda-valor">${fmt(p.total)}</div>
+            </div>
+        </div>`).join('');
+}
+
+// ================================================
+// MODAL NOVA VENDA
+// ================================================
+function abrirModalVenda() {
+    carrinhoModal = []; formaPagModal = 'credito';
+    document.getElementById('m-mesa').value = '';
+    document.getElementById('m-busca-prod').value = '';
+    document.getElementById('m-resultados').classList.remove('open');
+    document.getElementById('lio-status').textContent = '';
+    document.getElementById('lio-status').className = 'lio-status';
+    document.querySelectorAll('#modal-venda-overlay .forma-btn').forEach((b, i) => b.classList.toggle('selected', i === 0));
+    renderizarCarrinhoModal();
+    fetch('/api/produtos').then(r => r.json()).then(p => { todosProdutos = p.filter(x => x.disponivel !== false); });
+    const input = document.getElementById('m-busca-prod');
+    input.oninput = () => buscarProdutoModal(input.value);
+    abrirModal('modal-venda-overlay');
+    setTimeout(() => input.focus(), 200);
+}
+
+function buscarProdutoModal(q) {
+    const res = document.getElementById('m-resultados');
+    if (!q || q.length < 1) { res.classList.remove('open'); return; }
+    const f = todosProdutos.filter(p => p.nome.toUpperCase().includes(q.toUpperCase()));
+    if (!f.length) {
+        res.innerHTML = '<div style="padding:10px 14px;color:var(--muted);font-size:12px">Nenhum produto encontrado</div>';
+        res.classList.add('open'); return;
+    }
+    res.innerHTML = f.slice(0, 10).map(p =>
+        `<div class="prod-result-item" onclick="adicionarProdModal(${p.id},'${p.nome.replace(/'/g, "\\'")}',${p.preco_venda},${p.preco_custo || 0})">
+            <span class="nome">${p.nome}</span>
+            <span class="preco">${fmt(p.preco_venda)}</span>
+        </div>`).join('');
+    res.classList.add('open');
+}
+
+function adicionarProdModal(id, nome, preco, custo) {
+    const ex = carrinhoModal.find(i => i.id === id);
+    if (ex) ex.quantidade++;
+    else carrinhoModal.push({ id, nome, preco, custo, quantidade: 1 });
+    document.getElementById('m-busca-prod').value = '';
+    document.getElementById('m-resultados').classList.remove('open');
+    renderizarCarrinhoModal();
+}
+
+function renderizarCarrinhoModal() {
+    const div = document.getElementById('m-itens');
+    if (!carrinhoModal.length) {
+        div.innerHTML = '<div class="empty-state" style="padding:18px"><p style="font-size:12px">Busque produtos acima e clique para adicionar</p></div>';
+        document.getElementById('m-total').textContent = 'R$ 0,00'; return;
+    }
+    let total = 0;
+    div.innerHTML = carrinhoModal.map((item, i) => {
+        const sub = item.preco * item.quantidade; total += sub;
+        return `<div class="modal-item">
+            <span class="nome">${item.nome}</span>
+            <div class="qtd-ctrl">
+                <button class="qtd-btn" onclick="qtdModal(${i},-1)">−</button>
+                <span style="min-width:22px;text-align:center;font-weight:700">${item.quantidade}</span>
+                <button class="qtd-btn" onclick="qtdModal(${i},1)">+</button>
+            </div>
+            <span class="subtotal">${fmt(sub)}</span>
+            <button class="rm" onclick="rmModal(${i})">✕</button>
+        </div>`;
+    }).join('');
+    document.getElementById('m-total').textContent = fmt(total);
+}
+
+function qtdModal(i, d) {
+    carrinhoModal[i].quantidade += d;
+    if (carrinhoModal[i].quantidade <= 0) carrinhoModal.splice(i, 1);
+    renderizarCarrinhoModal();
+}
+function rmModal(i) { carrinhoModal.splice(i, 1); renderizarCarrinhoModal(); }
+function selForma(f, el) {
+    formaPagModal = f;
+    document.querySelectorAll('#modal-venda-overlay .forma-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+}
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('#modal-venda-overlay .prod-search-wrap')) {
+        const r = document.getElementById('m-resultados');
+        if (r) r.classList.remove('open');
+    }
+});
+
+async function finalizarVenda() {
+    if (!carrinhoModal.length) { alert('Adicione pelo menos um produto!'); return; }
+    const mesa = document.getElementById('m-mesa').value || 'Caixa';
+    const totalVenda = carrinhoModal.reduce((s, i) => s + i.preco * i.quantidade, 0);
+    const snapshot = [...carrinhoModal];
+
+    for (const item of snapshot) {
+        await fetch('/api/pedidos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mesa,
+                produto_id: item.id,
+                produto_nome: item.nome,
+                produto_preco: item.preco,
+                produto_custo: item.custo,
+                quantidade: item.quantidade,
+                forma_pagamento: formaPagModal,
+                origem: 'pdv'
+            })
+        });
+    }
+
+    if (['credito', 'debito', 'pix'].includes(formaPagModal)) {
+        const statusEl = document.getElementById('lio-status');
+        statusEl.textContent = '📡 Enviando para a maquininha LIO...';
+        statusEl.className = 'lio-status';
+        try {
+            const lioResp = await fetch('/api/lio/cobrar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ valor: totalVenda, forma: formaPagModal, descricao: `${mesa} — ${snapshot.map(i => i.nome).join(', ')}` })
+            });
+            const lioData = await lioResp.json();
+            if (lioData.aviso) { statusEl.textContent = '⚠️ ' + lioData.aviso; statusEl.className = 'lio-status aviso'; }
+            else { statusEl.textContent = '✅ Maquininha ativada com sucesso!'; statusEl.className = 'lio-status ok'; }
+        } catch (e) { console.warn('LIO:', e); }
+        await new Promise(r => setTimeout(r, 900));
+    }
+
+    fecharModal('modal-venda-overlay');
+    const formaLabel = { credito: '💳 Crédito', debito: '💳 Débito', dinheiro: '💵 Dinheiro', pix: '📱 Pix' };
+    document.getElementById('sucesso-detalhe').innerHTML =
+        snapshot.map(i => `<div class="item-row"><span>${i.nome} × ${i.quantidade}</span><span style="color:var(--verde)">${fmt(i.preco * i.quantidade)}</span></div>`).join('') +
+        `<div class="meta-row">Mesa: <span>${mesa}</span> &nbsp;|&nbsp; Pagamento: <span>${formaLabel[formaPagModal] || formaPagModal}</span></div>`;
+    document.getElementById('sucesso-total').textContent = fmt(totalVenda);
+    abrirModal('modal-sucesso-overlay');
+    carrinhoModal = [];
+    carregarVendasPDV();
+    verificarEstoqueDash();
+}
+
+// ================================================
+// PRODUTOS
+// ================================================
+async function carregarProdutos() {
+    todosProdsLista = await fetch('/api/produtos').then(r => r.json()).catch(() => []);
+    renderizarListaProdutos(todosProdsLista);
+}
+
+function renderizarListaProdutos(lista) {
+    const tbody = document.getElementById('lista-produtos');
+    if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:28px">Nenhum produto cadastrado ainda</td></tr>';
+        return;
+    }
+    tbody.innerHTML = lista.map(p => {
+        const m   = p.preco_venda - p.preco_custo;
+        const pct = p.preco_custo > 0 ? ((m / p.preco_custo) * 100).toFixed(0) + '%' : '—';
+        const em  = p.estoque_minimo || 0;
+        let eb;
+        if (p.estoque === 0)               eb = `<span class="estoque-badge estoque-zero">0</span>`;
+        else if (em > 0 && p.estoque <= em) eb = `<span class="estoque-badge estoque-min">⚠ ${p.estoque}</span>`;
+        else                                eb = `<span class="estoque-badge estoque-ok">${p.estoque}</span>`;
+        const nomeSafe = p.nome.replace(/'/g, "\\'");
+        const catCls   = p.categoria.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                          .replace(/ç/g,'c').replace(/ã/g,'a').replace(/ê/g,'e').replace(/ô/g,'o').replace(/\s/g,'');
+        const disp   = p.disponivel !== false;
+        const tlabel = disp ? '<span class="toggle-label on">On</span>' : '<span class="toggle-label off">Off</span>';
+        return `<tr style="${!disp ? 'opacity:0.5' : ''}">
+            <td>${p.foto ? `<img src="${p.foto}" style="width:34px;height:34px;object-fit:cover;border-radius:6px">` : '<div style="width:34px;height:34px;background:#252525;border-radius:6px;display:flex;align-items:center;justify-content:center">🍺</div>'}</td>
+            <td style="font-weight:600">${p.nome}</td>
+            <td><span class="badge badge-${catCls}">${p.categoria}</span></td>
+            <td style="color:var(--verde);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.preco_venda)}</td>
+            <td style="color:var(--vermelho)">${fmt(p.preco_custo)}</td>
+            <td style="color:var(--laranja);font-weight:600">${pct}</td>
+            <td>${eb}</td>
+            <td style="color:var(--muted);font-size:12px">${em || '—'}</td>
+            <td>
+                <div class="toggle-wrap">
+                    <label class="toggle-switch" title="${disp ? 'Desligar produto' : 'Ligar produto'}">
+                        <input type="checkbox" ${disp ? 'checked' : ''} onchange="toggleDisponivel(${p.id},this)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    ${tlabel}
+                </div>
+            </td>
+            <td>
+                <div style="display:flex;gap:5px;align-items:center">
+                    <button class="btn btn-yellow btn-sm btn-icon" onclick="editarProduto(${p.id})" title="Editar">✏️</button>
+                    <button class="btn btn-danger btn-sm btn-icon" onclick="confirmarExcluirProduto(${p.id},'${nomeSafe}')" title="Excluir">🗑</button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function toggleDisponivel(id, checkbox) {
+    const linha   = checkbox.closest('tr');
+    const labelEl = checkbox.closest('.toggle-wrap').querySelector('.toggle-label');
+    try {
+        const resp = await fetch('/api/produtos/' + id + '/toggle', { method: 'POST' });
+        const json = await resp.json();
+        if (json.ok) {
+            const disp          = json.disponivel;
+            linha.style.opacity = disp ? '1' : '0.5';
+            labelEl.className   = 'toggle-label ' + (disp ? 'on' : 'off');
+            labelEl.textContent = disp ? 'On' : 'Off';
+            checkbox.checked    = disp;
+            const prod = todosProdsLista.find(p => p.id === id);
+            if (prod) prod.disponivel = disp;
+        } else {
+            checkbox.checked = !checkbox.checked;
+        }
+    } catch (e) {
+        console.error(e);
+        checkbox.checked = !checkbox.checked;
+    }
+}
+
+function filtrarListaProdutos(q) {
+    renderizarListaProdutos(todosProdsLista.filter(p => p.nome.toLowerCase().includes(q.toLowerCase())));
+}
+
+function abrirModalProduto() {
+    document.getElementById('modal-prod-titulo').textContent = '🍺 Cadastrar Produto';
+    document.getElementById('mp-id').value = '';
+    ['mp-nome', 'mp-venda', 'mp-custo'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('mp-estoque').value = '0';
+    document.getElementById('mp-estoque-min').value = '0';
+    document.getElementById('mp-categoria').value = 'Cerveja';
+    document.getElementById('mp-foto').value = '';
+    const prev = document.getElementById('mp-foto-preview');
+    prev.style.display = 'none'; prev.src = '';
+    abrirModal('modal-produto-overlay');
+    setTimeout(() => document.getElementById('mp-nome').focus(), 200);
+}
+
+function editarProduto(id) {
+    const p = todosProdsLista.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('modal-prod-titulo').textContent = '✏️ Editar Produto';
+    document.getElementById('mp-id').value = p.id;
+    document.getElementById('mp-nome').value = p.nome;
+    document.getElementById('mp-venda').value = fmt(p.preco_venda);
+    document.getElementById('mp-custo').value = fmt(p.preco_custo);
+    document.getElementById('mp-categoria').value = p.categoria;
+    document.getElementById('mp-estoque').value = p.estoque || 0;
+    document.getElementById('mp-estoque-min').value = p.estoque_minimo || 0;
+    const prev = document.getElementById('mp-foto-preview');
+    if (p.foto) { prev.src = p.foto; prev.style.display = 'block'; } else prev.style.display = 'none';
+    abrirModal('modal-produto-overlay');
+}
+
+async function salvarProduto() {
+    const nome = document.getElementById('mp-nome').value.trim().toUpperCase();
+    const preco_venda = parseMoeda(document.getElementById('mp-venda').value);
+    const preco_custo = parseMoeda(document.getElementById('mp-custo').value);
+    const categoria = document.getElementById('mp-categoria').value;
+    const estoque = parseInt(document.getElementById('mp-estoque').value) || 0;
+    const estoque_minimo = parseInt(document.getElementById('mp-estoque-min').value) || 0;
+    const foto = document.getElementById('mp-foto').files[0];
+    const id = document.getElementById('mp-id').value;
+
+    if (!nome) { alert('Informe o nome do produto!'); return; }
+    if (!preco_venda) { alert('Informe o preço de venda!'); return; }
+
+    const fd = new FormData();
+    fd.append('nome', nome);
+    fd.append('preco_venda', preco_venda);
+    fd.append('preco_custo', preco_custo);
+    fd.append('categoria', categoria);
+    fd.append('estoque', estoque);
+    fd.append('estoque_minimo', estoque_minimo);
+    if (foto) fd.append('foto', foto);
+
+    const url = id ? '/api/produtos/' + id : '/api/produtos';
+    const method = id ? 'PUT' : 'POST';
+    const resp = await fetch(url, { method, body: fd });
+    if (resp.ok) {
+        fecharModal('modal-produto-overlay');
+        await carregarProdutos();
+        verificarEstoque();
+    } else {
+        alert('Erro ao salvar produto. Tente novamente.');
+    }
+}
+
+function confirmarExcluirProduto(id, nome) {
+    confirmar('🗑', 'Excluir Produto',
+        `Deseja mesmo excluir <strong>${nome}</strong>?<br><small style="color:var(--vermelho)">Esta ação não pode ser desfeita.</small>`,
+        'Sim, Excluir',
+        async () => {
+            await fetch('/api/produtos/' + id, { method: 'DELETE' });
+            carregarProdutos(); verificarEstoque();
+        });
+}
+
+async function verificarEstoque() {
+    const prods = await fetch('/api/produtos').then(r => r.json()).catch(() => []);
+    const min = prods.filter(p => p.estoque_minimo > 0 && p.estoque <= p.estoque_minimo);
+    const alerta = document.getElementById('alerta-estoque-prod');
+    if (min.length) {
+        alerta.style.display = 'block';
+        document.getElementById('alerta-prod-lista').innerHTML = min.map(p => `<li>${p.nome} (${p.estoque}/${p.estoque_minimo})</li>`).join('');
+    } else alerta.style.display = 'none';
+}
+
+function previewFotoModal(input) {
+    const prev = document.getElementById('mp-foto-preview');
+    if (input.files && input.files[0]) { prev.src = URL.createObjectURL(input.files[0]); prev.style.display = 'block'; }
+}
+
+// ================================================
+// DESPESAS
+// ================================================
+async function carregarDespesas() {
+    const despesas = await fetch('/api/despesas').then(r => r.json()).catch(() => []);
+    const total = despesas.reduce((s, d) => s + d.valor, 0);
+    document.getElementById('desp-total').textContent = fmt(total);
+    const tbody = document.getElementById('lista-despesas');
+    const bc = { Diaria: 'badge-diaria', Banda: 'badge-banda', Fixo: 'badge-fixo', Compra: 'badge-compra', Outro: 'badge-outro' };
+    tbody.innerHTML = despesas.length
+        ? despesas.map(d => `<tr>
+            <td style="color:var(--muted);font-family:'Barlow Condensed',sans-serif">${d.data}</td>
+            <td style="font-weight:500">${d.descricao}</td>
+            <td><span class="badge ${bc[d.categoria] || 'badge-outro'}">${d.categoria}</span></td>
+            <td style="color:var(--vermelho);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(d.valor)}</td>
+            <td><button class="btn btn-danger btn-sm btn-icon" onclick="confirmarExcluirDespesa(${d.id},'${d.descricao.replace(/'/g, "\\'")}')">🗑</button></td>
+          </tr>`).join('')
+        : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px">Nenhuma despesa registrada hoje</td></tr>';
+}
+
+function abrirModalDespesa() {
+    document.getElementById('md-desc').value = '';
+    document.getElementById('md-valor').value = '';
+    document.getElementById('md-cat').value = 'Diaria';
+    abrirModal('modal-despesa-overlay');
+    setTimeout(() => document.getElementById('md-desc').focus(), 200);
+}
+
+async function salvarDespesa() {
+    const descricao = document.getElementById('md-desc').value.trim();
+    const valor = parseMoeda(document.getElementById('md-valor').value);
+    const categoria = document.getElementById('md-cat').value;
+    if (!descricao) { alert('Informe a descrição!'); return; }
+    if (!valor) { alert('Informe o valor!'); return; }
+    const resp = await fetch('/api/despesas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ descricao, valor, categoria })
+    });
+    if (resp.ok) {
+        fecharModal('modal-despesa-overlay');
+        carregarDespesas();
+    }
+}
+
+function confirmarExcluirDespesa(id, desc) {
+    confirmar('💸', 'Excluir Despesa', `Deseja mesmo excluir <strong>${desc}</strong>?`, 'Sim, Excluir', async () => {
+        await fetch('/api/despesas/' + id, { method: 'DELETE' });
+        carregarDespesas();
+    });
+}
+
+// ================================================
+// PEDIDOS
+// ================================================
+async function carregarPedidos() {
+    const origem = document.getElementById('filtro-origem').value;
+    const pag = document.getElementById('filtro-pag').value;
+    let url = '/api/pedidos/agrupados?';
+    if (origem) url += 'origem=' + origem + '&';
+    if (pag) url += 'forma=' + pag;
+    const pedidos = await fetch(url).then(r => r.json()).catch(() => []);
+    document.getElementById('ped-fat').textContent = fmt(pedidos.reduce((s, p) => s + p.total, 0));
+    document.getElementById('ped-lucro').textContent = fmt(pedidos.reduce((s, p) => s + p.lucro, 0));
+    document.getElementById('ped-qtd').textContent = pedidos.reduce((s, p) => s + p.quantidade, 0);
+    const tbody = document.getElementById('lista-pedidos');
+    tbody.innerHTML = pedidos.length
+        ? pedidos.map(p => `<tr>
+            <td style="font-weight:700;font-size:14px">${p.produto_nome}</td>
+            <td style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--text)">${p.quantidade}×</td>
+            <td style="color:var(--verde);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.total)}</td>
+            <td style="color:var(--laranja);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.lucro)}</td>
+            <td>${badgePag(p.forma_pagamento)}</td>
+            <td>${badgeOrigem(p.origem)}</td>
+          </tr>`).join('')
+        : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:28px">Nenhum pedido encontrado</td></tr>';
+}
+
+// ================================================
+// FATURAMENTO
+// ================================================
+function setFatPeriodo(p, el) {
+    fatPeriodoAtual = p;
+    document.querySelectorAll('.fat-periodo-card').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    carregarFaturamento();
+}
+
+async function carregarFaturamento() {
+    try {
+        const [dHoje, dSemana, dMes] = await Promise.all([
+            fetch('/api/dashboard?periodo=hoje').then(r => r.json()),
+            fetch('/api/dashboard?periodo=semana').then(r => r.json()),
+            fetch('/api/dashboard?periodo=mes').then(r => r.json())
+        ]);
+        document.getElementById('fat-hoje-val').textContent = fmt(dHoje.faturamento);
+        document.getElementById('fat-semana-val').textContent = fmt(dSemana.faturamento);
+        document.getElementById('fat-mes-val').textContent = fmt(dMes.faturamento);
+        const d = { hoje: dHoje, semana: dSemana, mes: dMes }[fatPeriodoAtual] || dHoje;
+        document.getElementById('fat-d-fat').textContent = fmt(d.faturamento);
+        document.getElementById('fat-d-lucro-bruto').textContent = fmt(d.lucro_bruto);
+        document.getElementById('fat-d-lucro-liq').textContent = fmt(d.lucro_liquido);
+        document.getElementById('fat-d-custo').textContent = fmt(d.custo_produtos);
+        document.getElementById('fat-d-desp').textContent = fmt(d.total_despesas);
+        document.getElementById('fat-d-pedidos').textContent = d.total_pedidos;
+        desenharDonut('fat-donut', 'fat-donut-legend', d.por_forma_pagamento || {});
+        renderTopProdutos('fat-top-prod', d.top_produtos || []);
+        const pedidos = await fetch('/api/pedidos?periodo=' + fatPeriodoAtual).then(r => r.json()).catch(() => []);
+        const tbody = document.getElementById('fat-pedidos-lista');
+        tbody.innerHTML = pedidos.length
+            ? pedidos.map(p => `<tr>
+                <td style="color:var(--muted);font-family:'Barlow Condensed',sans-serif">${p.data}</td>
+                <td>${p.mesa || '—'}</td>
+                <td style="font-weight:500">${p.produto_nome}</td>
+                <td>${p.quantidade}×</td>
+                <td style="color:var(--verde);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.total)}</td>
+                <td>${badgePag(p.forma_pagamento)}</td>
+                <td>${badgeOrigem(p.origem)}</td>
+              </tr>`).join('')
+            : '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:28px">Nenhum pedido no período</td></tr>';
+    } catch (e) { console.error(e); }
+}
+
+async function exportarPDF() {
+    const d = await fetch('/api/dashboard?periodo=' + fatPeriodoAtual).then(r => r.json());
+    const pedidos = await fetch('/api/pedidos?periodo=' + fatPeriodoAtual).then(r => r.json()).catch(() => []);
+    const periodoLabel = { hoje: 'Hoje', semana: 'Esta Semana', mes: 'Este Mês' }[fatPeriodoAtual];
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relatório Calcada 190</title>
+    <style>body{font-family:Arial,sans-serif;padding:30px;color:#222;max-width:820px;margin:0 auto}h1{color:#FF5500;font-size:22px;margin-bottom:4px}h2{font-size:13px;color:#666;font-weight:normal;margin-bottom:22px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}.card{border:1px solid #ddd;border-radius:8px;padding:12px;text-align:center}.card h3{font-size:9px;text-transform:uppercase;color:#999;margin-bottom:5px}.card p{font-size:20px;font-weight:bold}.verde{color:#00aa55}.vermelho{color:#e74c3c}.laranja{color:#FF5500}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#f5f5f5;padding:7px;text-align:left;font-size:9px;text-transform:uppercase;color:#888}td{padding:7px;border-bottom:1px solid #f0f0f0}.footer{margin-top:20px;font-size:10px;color:#999;text-align:center}@media print{button{display:none}}</style>
+    </head><body>
+    <h1>Calcada 190 — Relatório de Faturamento</h1>
+    <h2>Período: ${periodoLabel} — Gerado em ${new Date().toLocaleString('pt-BR')}</h2>
+    <div class="cards">
+        <div class="card"><h3>Faturamento</h3><p class="verde">${fmt(d.faturamento)}</p></div>
+        <div class="card"><h3>Lucro Bruto</h3><p class="verde">${fmt(d.lucro_bruto)}</p></div>
+        <div class="card"><h3>Lucro Líquido</h3><p class="laranja">${fmt(d.lucro_liquido)}</p></div>
+        <div class="card"><h3>Custo Produtos</h3><p class="vermelho">${fmt(d.custo_produtos)}</p></div>
+        <div class="card"><h3>Despesas</h3><p class="vermelho">${fmt(d.total_despesas)}</p></div>
+        <div class="card"><h3>Pedidos</h3><p>${d.total_pedidos}</p></div>
+    </div>
+    <table><thead><tr><th>Hora</th><th>Mesa</th><th>Produto</th><th>Qtd</th><th>Total</th><th>Pagamento</th><th>Origem</th></tr></thead>
+    <tbody>${pedidos.map(p => `<tr><td>${p.data}</td><td>${p.mesa || '—'}</td><td>${p.produto_nome}</td><td>${p.quantidade}×</td><td style="color:#00aa55;font-weight:bold">${fmt(p.total)}</td><td>${p.forma_pagamento}</td><td>${p.origem}</td></tr>`).join('')}</tbody></table>
+    <div class="footer">Calcada 190 — Sistema de Gestão</div>
+    <br><button onclick="window.print()" style="background:#FF5500;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold">🖨 Imprimir / Salvar PDF</button>
+    </body></html>`);
+    win.document.close();
+}
+
+// ================================================
+// FUNCIONÁRIOS
+// ================================================
+function abrirModalFuncionario() {
+    document.getElementById('mf-nome').value = '';
+    document.getElementById('mf-lio-id').value = '';
+    document.getElementById('mf-funcao').value = 'Vendedor';
+    abrirModal('modal-func-overlay');
+    setTimeout(() => document.getElementById('mf-nome').focus(), 200);
+}
+
+function salvarFuncionario() {
+    const nome = document.getElementById('mf-nome').value.trim();
+    const funcao = document.getElementById('mf-funcao').value;
+    const lio_id = document.getElementById('mf-lio-id').value.trim();
+    if (!nome) { alert('Informe o nome do funcionário!'); return; }
+    funcionarios.push({ id: Date.now(), nome, funcao, lio_id });
+    localStorage.setItem('funcionarios', JSON.stringify(funcionarios));
+    fecharModal('modal-func-overlay');
+    carregarFuncionarios();
+}
+
+async function carregarFuncionarios() {
+    const grid = document.getElementById('func-grid');
+    const ranking = document.getElementById('func-ranking');
+    if (!funcionarios.length) {
+        grid.innerHTML = '<div class="empty-state"><div class="ico">👥</div><p>Nenhum funcionário cadastrado</p></div>';
+        ranking.innerHTML = '<div class="empty-state"><div class="ico">📊</div><p>Cadastre funcionários e vincule os IDs das maquininhas LIO</p></div>';
+        return;
+    }
+    let pedidos = [];
+    try { pedidos = await fetch('/api/pedidos').then(r => r.json()); } catch (e) {}
+    const vendasPorId = {};
+    pedidos.filter(p => p.origem === 'lio' && p.lio_id).forEach(p => {
+        if (!vendasPorId[p.lio_id]) vendasPorId[p.lio_id] = { fat: 0, qtd: 0 };
+        vendasPorId[p.lio_id].fat += p.total;
+        vendasPorId[p.lio_id].qtd += p.quantidade;
+    });
+    const funcComVendas = funcionarios.map(f => ({
+        ...f, fat: vendasPorId[f.lio_id]?.fat || 0, qtd: vendasPorId[f.lio_id]?.qtd || 0
+    })).sort((a, b) => b.fat - a.fat);
+    grid.innerHTML = funcComVendas.map(f => `
+        <div class="func-card">
+            <div class="func-nome">${f.nome}</div>
+            <div class="func-id">${f.lio_id || 'Sem ID'}</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${f.funcao}</div>
+            <div class="func-fat">${fmt(f.fat)}</div>
+            <div class="func-sub">${f.qtd} vendas hoje (LIO)</div>
+            <button class="btn btn-danger btn-sm" style="margin-top:12px;width:100%;justify-content:center"
+                onclick="confirmarExcluirFuncionario(${f.id},'${f.nome.replace(/'/g, "\\'")}')">Remover</button>
+        </div>`).join('');
+    ranking.innerHTML = funcComVendas.map((f, i) => `
+        <div class="func-rank">
+            <div class="pos">${i + 1}</div>
+            <div class="info">
+                <div class="nome">${f.nome} <span style="font-size:11px;color:var(--muted)">(${f.funcao})</span></div>
+                <div class="sub">${f.qtd} vendas &bull; ID: ${f.lio_id || '—'}</div>
+            </div>
+            <div class="fat">${fmt(f.fat)}</div>
+        </div>`).join('');
+}
+
+function confirmarExcluirFuncionario(id, nome) {
+    confirmar('👤', 'Remover Funcionário', `Deseja mesmo remover <strong>${nome}</strong>?`, 'Sim, Remover', () => {
+        funcionarios = funcionarios.filter(f => f.id !== id);
+        localStorage.setItem('funcionarios', JSON.stringify(funcionarios));
+        carregarFuncionarios();
+    });
+}
+
+function confirmarFecharCaixa() {
+    confirmar('🔒', 'Fechar Caixa',
+        `Isso vai <strong>encerrar o turno</strong> e zerar o ranking de hoje.<br>Os dados de faturamento continuam salvos no banco.<br><small style="color:var(--muted)">Amanhã o caixa começa do zero.</small>`,
+        'Fechar Caixa',
+        async () => {
+            await fetch('/api/fechar-caixa', { method: 'POST' });
+            carregarFuncionarios();
+            alert('✅ Caixa fechado! Bom descanso.');
+        });
+}
+
+// ================================================
+// INIT
+// ================================================
+carregarDashboard();
+
+setInterval(() => {
+    if (document.getElementById('page-dashboard').classList.contains('active')) carregarDashboard();
+    if (document.getElementById('page-pdv').classList.contains('active')) carregarVendasPDV();
+}, 30000);
+</script>
+</body>
+</html>

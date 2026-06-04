@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Funcionários{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .func-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+    .func-card { background: var(--bg4); border-radius: 10px; padding: 16px; border: 1px solid var(--border); }
+    .func-card .func-nome { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
+    .func-card .func-setor { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .func-card .func-fat { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700; color: var(--verde); }
+    .func-card .func-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .func-rank { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .func-rank:last-child { border-bottom: none; }
+    .func-rank .pos { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 900; color: var(--laranja); min-width: 28px; }
+    .func-rank .info { flex: 1; }
+    .func-rank .info .nome { font-weight: 600; }
+    .func-rank .info .sub { font-size: 11px; color: var(--muted); }
+    .func-rank .fat { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; color: var(--verde); }
+    .medal-1 { color: #FFD700; }
+    .medal-2 { color: #C0C0C0; }
+    .medal-3 { color: #CD7F32; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title"><span>Funcionários</span></div>
+    <div style="display:flex;gap:8px">
+        <button class="btn btn-danger" onclick="confirmarFecharCaixa()">🔒 Fechar Caixa</button>
+    </div>
+</div>
+
+<div class="charts-row">
+    <div class="section">
+        <div class="section-header"><h2>🏆 Ranking de Vendas — Hoje</h2></div>
+        <div id="func-ranking">
+            <div class="empty-state"><div class="ico">👥</div><p>Nenhum dado ainda</p></div>
+        </div>
+    </div>
+    <div class="section">
+        <div class="section-header">
+            <h2>📱 Vendedores Ativos Hoje</h2>
+            <span style="font-size:11px;color:var(--muted)">Identificados pelo app</span>
+        </div>
+        <div class="func-grid" id="func-grid">
+            <div class="empty-state"><div class="ico">📱</div><p>Nenhuma venda registrada ainda hoje</p></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function carregarFuncionarios() {
+    const ranking = document.getElementById('func-ranking');
+    const grid    = document.getElementById('func-grid');
+
+    let pedidos = [];
+    try { pedidos = await fetch('/api/pedidos').then(r => r.json()); } catch (e) {}
+
+    // Agrupa por vendedor_nome (vem do app Android)
+    const vendedores = {};
+    pedidos.filter(p => p.vendedor_nome).forEach(p => {
+        const key = p.vendedor_nome;
+        if (!vendedores[key]) vendedores[key] = {
+            nome: p.vendedor_nome,
+            setor: p.setor || '—',
+            fat: 0, qtd: 0, pedidos: 0
+        };
+        vendedores[key].fat    += p.total;
+        vendedores[key].qtd    += p.quantidade;
+        vendedores[key].pedidos += 1;
+        if (p.setor) vendedores[key].setor = p.setor;
+    });
+
+    const lista = Object.values(vendedores).sort((a, b) => b.fat - a.fat);
+
+    if (!lista.length) {
+        ranking.innerHTML = '<div class="empty-state"><div class="ico">📊</div><p>Os vendedores aparecem aqui automaticamente<br>quando fazem vendas pelo app</p></div>';
+        grid.innerHTML    = '<div class="empty-state"><div class="ico">📱</div><p>Nenhuma venda registrada ainda hoje</p></div>';
+        return;
+    }
+
+    const medalhas = ['🥇', '🥈', '🥉'];
+    const medalClasses = ['medal-1', 'medal-2', 'medal-3'];
+
+    ranking.innerHTML = lista.map((v, i) => `
+        <div class="func-rank">
+            <div class="pos ${medalClasses[i] || ''}">${medalhas[i] || (i + 1)}</div>
+            <div class="info">
+                <div class="nome">${v.nome} <span style="font-size:11px;color:var(--muted)">(${v.setor})</span></div>
+                <div class="sub">${v.qtd} itens &bull; ${v.pedidos} venda(s)</div>
+            </div>
+            <div class="fat">${fmt(v.fat)}</div>
+        </div>`).join('');
+
+    grid.innerHTML = lista.map(v => `
+        <div class="func-card">
+            <div class="func-nome">${v.nome}</div>
+            <div class="func-setor">📍 ${v.setor}</div>
+            <div class="func-fat">${fmt(v.fat)}</div>
+            <div class="func-sub">${v.qtd} itens &bull; ${v.pedidos} venda(s)</div>
+        </div>`).join('');
+}
+
+function confirmarFecharCaixa() {
+    confirmar('🔒', 'Fechar Caixa',
+        `Isso vai <strong>encerrar o turno</strong>.<br>Os dados de faturamento continuam salvos no banco.<br><small style="color:var(--muted)">Amanhã o caixa começa do zero.</small>`,
+        'Fechar Caixa',
+        async () => {
+            await fetch('/api/fechar-caixa', { method: 'POST' });
+            carregarFuncionarios();
+            alert('✅ Caixa fechado! Bom descanso.');
+        });
+}
+
+carregarFuncionarios();
+</script>
+{% endblock %}

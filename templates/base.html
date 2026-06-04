@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Calçada 190ML{% endblock %} — Sistema de Gestão</title>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --laranja: #FF5500;
+            --laranja-dark: #cc4400;
+            --laranja-glow: rgba(255,85,0,0.12);
+            --verde: #00e676;
+            --vermelho: #ff3d3d;
+            --bg: #0f0f0f;
+            --bg2: #161616;
+            --bg3: #1e1e1e;
+            --bg4: #252525;
+            --border: #2a2a2a;
+            --text: #f0f0f0;
+            --muted: #777;
+            --sidebar-w: 235px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; display: flex; min-height: 100vh; font-size: 14px; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg2); }
+        ::-webkit-scrollbar-thumb { background: var(--laranja); border-radius: 2px; }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar { width: var(--sidebar-w); background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 100; }
+        .sidebar-logo { padding: 22px 20px 16px; border-bottom: 1px solid var(--border); }
+        .sidebar-logo h1 { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 900; color: var(--laranja); letter-spacing: 2px; text-transform: uppercase; }
+        .sidebar-logo p { color: #444; font-size: 10px; margin-top: 2px; letter-spacing: 1.5px; text-transform: uppercase; }
+        .sidebar-logo .data-hora { margin-top: 10px; font-size: 12px; color: var(--muted); font-weight: 500; }
+        .sidebar-menu { flex: 1; padding: 8px 0; overflow-y: auto; }
+        .menu-section { padding: 14px 20px 4px; font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: #383838; font-weight: 700; }
+        .menu-item { display: flex; align-items: center; gap: 11px; padding: 10px 20px; cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 500; transition: all 0.15s; border-left: 3px solid transparent; text-decoration: none; }
+        .menu-item:hover { background: var(--bg3); color: var(--text); }
+        .menu-item.active { background: var(--laranja-glow); color: var(--laranja); border-left-color: var(--laranja); }
+        .menu-item .ico { font-size: 15px; min-width: 20px; text-align: center; }
+        .menu-badge { margin-left: auto; background: var(--vermelho); color: #fff; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 10px; display: none; }
+        .sidebar-footer { padding: 14px 20px; border-top: 1px solid var(--border); font-size: 11px; color: #444; display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-footer a { color: #555; text-decoration: none; font-size: 12px; transition: color 0.15s; }
+        .sidebar-footer a:hover { color: var(--vermelho); }
+
+        /* ===== MAIN ===== */
+        .main { margin-left: var(--sidebar-w); flex: 1; padding: 28px; min-height: 100vh; }
+
+        /* ===== PAGE HEADER ===== */
+        .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+        .page-title { font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: 1px; text-transform: uppercase; }
+        .page-title span { color: var(--laranja); }
+
+        /* ===== CARDS ===== */
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .card { background: var(--bg3); border-radius: 10px; padding: 16px 18px; border: 1px solid var(--border); position: relative; overflow: hidden; }
+        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; }
+        .card.verde::before { background: var(--verde); }
+        .card.vermelho::before { background: var(--vermelho); }
+        .card.laranja::before { background: var(--laranja); }
+        .card.branco::before { background: #444; }
+        .card h3 { color: var(--muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .card p { font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 700; line-height: 1; }
+        .card.verde p { color: var(--verde); }
+        .card.vermelho p { color: var(--vermelho); }
+        .card.laranja p { color: var(--laranja); }
+        .card.branco p { color: var(--text); }
+        .card .sub { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+        /* ===== SECTIONS ===== */
+        .section { background: var(--bg3); border-radius: 10px; padding: 18px; margin-bottom: 16px; border: 1px solid var(--border); }
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
+        .section h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 1px; }
+
+        /* ===== CHARTS ===== */
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .chart-bar { display: flex; flex-direction: column; gap: 11px; }
+        .chart-bar-item { display: flex; flex-direction: column; gap: 4px; }
+        .chart-bar-label { display: flex; justify-content: space-between; font-size: 12px; gap: 8px; }
+        .chart-bar-label span:first-child { color: var(--text); font-weight: 500; flex: 1; }
+        .chart-bar-label .qtd-info { color: var(--muted); font-size: 11px; }
+        .chart-bar-label .val-info { color: var(--verde); font-weight: 700; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; }
+        .chart-bar-track { height: 5px; background: var(--bg4); border-radius: 3px; overflow: hidden; }
+        .chart-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+        .chart-donut-wrap { display: flex; align-items: center; gap: 20px; }
+        .donut-canvas { flex-shrink: 0; }
+        .donut-legend { flex: 1; display: flex; flex-direction: column; gap: 9px; }
+        .donut-leg-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+        .donut-leg-color { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+        .donut-leg-label { color: var(--text); flex: 1; }
+        .donut-leg-val { color: var(--verde); font-weight: 700; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; }
+
+        /* ===== TABLE ===== */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; color: var(--muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+        td { padding: 10px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        /* ===== FORMS ===== */
+        .form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; align-items: flex-end; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 120px; }
+        .form-group label { color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        input, select { background: var(--bg4); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; border-radius: 8px; width: 100%; font-size: 14px; font-family: 'Barlow', sans-serif; transition: border-color 0.15s; }
+        input:focus, select:focus { outline: none; border-color: var(--laranja); }
+        input::placeholder { color: #3a3a3a; }
+        .foto-preview { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; margin-top: 8px; display: none; border: 1px solid var(--border); }
+
+        /* ===== BUTTONS ===== */
+        .btn { background: var(--laranja); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; white-space: nowrap; letter-spacing: 0.5px; transition: all 0.15s; text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { background: var(--laranja-dark); transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+        .btn-secondary { background: var(--bg4); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #333; transform: none; }
+        .btn-danger { background: #c0392b; }
+        .btn-danger:hover { background: #a93226; }
+        .btn-green { background: #00a550; }
+        .btn-green:hover { background: #008a44; }
+        .btn-yellow { background: #d68910; }
+        .btn-yellow:hover { background: #b7770d; }
+        .btn-sm { padding: 5px 10px; font-size: 11px; }
+        .btn-icon { padding: 5px 9px; font-size: 12px; }
+
+        /* ===== BADGES ===== */
+        .badge { padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-bebidas { background: rgba(255,85,0,0.15); color: var(--laranja); }
+        .badge-cerveja { background: rgba(255,85,0,0.15); color: var(--laranja); }
+        .badge-drinks { background: rgba(155,89,182,0.15); color: #c39bd3; }
+        .badge-narguile { background: rgba(26,188,156,0.15); color: #1abc9c; }
+        .badge-porcao { background: rgba(230,126,34,0.15); color: #e67e22; }
+        .badge-variedades { background: rgba(80,80,80,0.25); color: #999; }
+        .badge-outro { background: rgba(80,80,80,0.25); color: #999; }
+        .badge-fixo { background: rgba(231,76,60,0.15); color: #e74c3c; }
+        .badge-banda { background: rgba(52,152,219,0.15); color: #3498db; }
+        .badge-diaria { background: rgba(241,196,15,0.15); color: #f1c40f; }
+        .badge-compra { background: rgba(46,204,113,0.15); color: #2ecc71; }
+        .badge-dinheiro { background: rgba(46,204,113,0.15); color: #2ecc71; }
+        .badge-pix { background: rgba(155,89,182,0.15); color: #c39bd3; }
+        .badge-credito { background: rgba(52,152,219,0.15); color: #4fc3f7; }
+        .badge-debito { background: rgba(26,188,156,0.15); color: #1abc9c; }
+        .badge-pdv { background: rgba(255,85,0,0.12); color: var(--laranja); }
+        .badge-lio { background: rgba(52,152,219,0.12); color: #3498db; }
+
+        /* ===== ALERTA ESTOQUE ===== */
+        .alerta-estoque { background: rgba(255,61,61,0.08); border: 1px solid rgba(255,61,61,0.25); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: none; }
+        .alerta-estoque h4 { color: var(--vermelho); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .alerta-estoque ul { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+        .alerta-estoque ul li { background: rgba(255,61,61,0.12); color: #ffaaaa; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state { text-align: center; padding: 36px 20px; color: var(--muted); }
+        .empty-state .ico { font-size: 36px; margin-bottom: 12px; opacity: 0.35; }
+        .empty-state p { font-size: 13px; line-height: 1.6; }
+
+        /* ===== MODALS ===== */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 999; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.open { display: flex; }
+        .modal { background: var(--bg3); border: 1px solid var(--border); border-radius: 14px; padding: 26px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; position: relative; animation: modalIn 0.22s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.92) translateY(16px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .modal h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 18px; text-transform: uppercase; letter-spacing: 1px; }
+        .modal-close { position: absolute; top: 14px; right: 14px; background: var(--bg4); border: none; color: var(--muted); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+        .modal-close:hover { background: var(--vermelho); color: #fff; }
+        .modal-confirm { text-align: center; }
+        .modal-confirm .confirm-icon { font-size: 44px; margin-bottom: 14px; }
+        .modal-confirm p { color: var(--muted); font-size: 14px; margin-bottom: 22px; line-height: 1.6; }
+        .modal-confirm p strong { color: var(--text); }
+        .modal-confirm .confirm-btns { display: flex; gap: 10px; }
+        .modal-confirm .confirm-btns .btn { flex: 1; justify-content: center; }
+
+        /* ===== TOGGLE DISPONIBILIDADE ===== */
+        .toggle-wrap { display: flex; align-items: center; gap: 7px; }
+        .toggle-switch { position: relative; width: 38px; height: 21px; flex-shrink: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+        .toggle-slider { position: absolute; inset: 0; background: #333; border-radius: 21px; cursor: pointer; transition: background 0.2s; border: 1px solid #444; }
+        .toggle-slider::before { content: ''; position: absolute; width: 15px; height: 15px; left: 2px; top: 2px; background: #666; border-radius: 50%; transition: all 0.2s; }
+        .toggle-switch input:checked + .toggle-slider { background: rgba(0,230,118,0.2); border-color: var(--verde); }
+        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(17px); background: var(--verde); }
+        .toggle-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+        .toggle-label.on  { color: var(--verde); }
+        .toggle-label.off { color: var(--vermelho); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .main > div { animation: fadeIn 0.2s ease; }
+
+        @media (max-width: 900px) {
+            .charts-row { grid-template-columns: 1fr; }
+        }
+    </style>
+    {% block extra_styles %}{% endblock %}
+</head>
+<body>
+
+<!-- ========== SIDEBAR ========== -->
+<div class="sidebar">
+    <div class="sidebar-logo">
+        <h1>CALÇADA 190ML</h1>
+        <p>Sistema de Gestão</p>
+        <div class="data-hora" id="data-hora">—</div>
+    </div>
+
+    <div class="sidebar-menu">
+
+        <div class="menu-section">Principal</div>
+
+        <a class="menu-item {% if active_page == 'dashboard' %}active{% endif %}" href="/dashboard">
+            <span class="ico">📊</span> Dashboard
+        </a>
+
+        <a class="menu-item {% if active_page == 'pdv' %}active{% endif %}" href="/pdv">
+            <span class="ico">🛒</span> PDV Caixa
+        </a>
+
+        <div class="menu-section">Gerenciamento</div>
+
+        <a class="menu-item {% if active_page == 'produtos' %}active{% endif %}" href="/produtos">
+            <span class="ico">🍺</span> Produtos
+            <span class="menu-badge" id="badge-estoque">!</span>
+        </a>
+
+        <a class="menu-item {% if active_page == 'despesas' %}active{% endif %}" href="/despesas">
+            <span class="ico">💸</span> Despesas
+        </a>
+
+        <a class="menu-item {% if active_page == 'pedidos' %}active{% endif %}" href="/pedidos">
+            <span class="ico">📋</span> Pedidos do Dia
+        </a>
+
+        <a class="menu-item {% if active_page == 'faturamento' %}active{% endif %}" href="/faturamento">
+            <span class="ico">💰</span> Faturamento
+        </a>
+
+        <a class="menu-item {% if active_page == 'funcionarios' %}active{% endif %}" href="/funcionarios">
+            <span class="ico">👥</span> Funcionários
+        </a>
+
+        <!-- NOVA OPÇÃO -->
+        <a class="menu-item {% if active_page == 'agenda' %}active{% endif %}" href="/agenda">
+            <span class="ico">📅</span> Agenda
+        </a>
+
+        <a class="menu-item {% if active_page == 'riders' %}active{% endif %}" href="/riders">
+            <span class="ico">🎸</span> Riders
+        </a>
+
+    </div>
+
+    <div class="sidebar-footer">
+        <span>{{ usuario }} — {{ perfil }}</span>
+        <a href="/logout">🚪 Sair</a>
+    </div>
+</div>
+
+<!-- ========== MAIN ========== -->
+<div class="main">
+    {% block content %}{% endblock %}
+</div>
+
+<!-- ========== MODAL CONFIRMAR (global) ========== -->
+<div class="modal-overlay" id="modal-confirm-overlay">
+    <div class="modal modal-confirm" style="max-width:380px">
+        <div class="confirm-icon" id="confirm-icon">🗑</div>
+        <h2 id="confirm-titulo">Confirmar</h2>
+        <p id="confirm-msg">Deseja mesmo realizar esta ação?</p>
+        <div class="confirm-btns">
+            <button class="btn btn-secondary" style="justify-content:center" onclick="fecharModal('modal-confirm-overlay')">Cancelar</button>
+            <button class="btn btn-danger" style="justify-content:center" id="confirm-ok-btn">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function fmt(v) {
+    return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+function mascaraPreco(input) {
+    let v = input.value.replace(/\D/g, '');
+    if (!v) { input.value = ''; return; }
+    input.value = 'R$ ' + (parseInt(v) / 100).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+function parseMoeda(s) {
+    return parseFloat((s || '').replace('R$ ', '').replace(/\./g, '').replace(',', '.')) || 0;
+}
+function badgePag(f) {
+    const m = { dinheiro: ['badge-dinheiro', '💵 Dinheiro'], pix: ['badge-pix', '📱 Pix'], credito: ['badge-credito', '💳 Crédito'], debito: ['badge-debito', '💳 Débito'] };
+    const [cls, label] = m[f] || ['badge-outro', f];
+    return `<span class="badge ${cls}">${label}</span>`;
+}
+function badgeOrigem(o) {
+    return o === 'pdv' ? '<span class="badge badge-pdv">PDV</span>' : '<span class="badge badge-lio">LIO</span>';
+}
+function abrirModal(id) { document.getElementById(id).classList.add('open'); }
+function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+    o.addEventListener('click', e => { if (e.target === o) fecharModal(o.id); });
+});
+function confirmar(icone, titulo, msg, labelOk, onOk) {
+    document.getElementById('confirm-icon').textContent = icone;
+    document.getElementById('confirm-titulo').textContent = titulo;
+    document.getElementById('confirm-msg').innerHTML = msg;
+    const btn = document.getElementById('confirm-ok-btn');
+    btn.textContent = labelOk || 'Confirmar';
+    btn.onclick = () => { fecharModal('modal-confirm-overlay'); onOk(); };
+    abrirModal('modal-confirm-overlay');
+}
+function tick() {
+    const n = new Date();
+    const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const el = document.getElementById('data-hora');
+    if (el) el.textContent = `${dias[n.getDay()]}, ${n.getDate()} ${meses[n.getMonth()]} — ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+}
+tick(); setInterval(tick, 30000);
+async function verificarEstoqueSidebar() {
+    try {
+        const prods = await fetch('/api/produtos').then(r => r.json());
+        const min = prods.filter(p => p.estoque_minimo > 0 && p.estoque <= p.estoque_minimo);
+        const badge = document.getElementById('badge-estoque');
+        if (badge) { badge.style.display = min.length ? 'inline' : 'none'; badge.textContent = min.length; }
+    } catch(e) {}
+}
+verificarEstoqueSidebar();
+</script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

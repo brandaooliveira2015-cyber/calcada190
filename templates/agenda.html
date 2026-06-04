@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Agenda{% endblock %}
+
+{% block extra_styles %}
+<style>
+.agenda-container{
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: auto;
+}
+
+.agenda-header{
+    background: #0d6efd;
+    color: white;
+    display: grid;
+    grid-template-columns: 80px repeat(7,1fr);
+    font-weight: bold;
+}
+
+.agenda-header div{
+    padding: 12px;
+    text-align: center;
+    border-right: 1px solid rgba(255,255,255,.15);
+}
+
+.agenda-row{
+    display: grid;
+    grid-template-columns: 80px repeat(7,1fr);
+}
+
+.hora{
+    background: var(--bg4);
+    padding: 15px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+}
+
+.celula{
+    min-height: 90px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 5px;
+    cursor: pointer;
+    transition: .2s;
+}
+
+.celula:hover{
+    background: rgba(255,85,0,.08);
+}
+
+.aula{
+    background: rgba(255,85,0,.15);
+    border-left: 4px solid var(--laranja);
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.aula strong{
+    display:block;
+    color: var(--laranja);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="page-title">
+        <span>📅</span> Agenda de Eventos
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+
+        <button class="btn btn-secondary">
+            ◀ Mês Anterior
+        </button>
+
+        <strong id="mes-atual">
+            Junho 2026
+        </strong>
+
+        <button class="btn btn-secondary">
+            Próximo Mês ▶
+        </button>
+
+        <button class="btn" onclick="abrirModalEvento()">
+            ＋ Novo Evento
+        </button>
+
+    </div>
+</div>
+
+<div class="agenda-container">
+
+    <div class="agenda-header">
+        <div>Hora</div>
+        <div>Dom</div>
+        <div>Seg</div>
+        <div>Ter</div>
+        <div>Qua</div>
+        <div>Qui</div>
+        <div>Sex</div>
+        <div>Sáb</div>
+    </div>
+
+    <!-- 07:00 -->
+    <div class="agenda-row">
+        <div class="hora">07:00</div>
+
+        <div class="celula" onclick="abrirModalEvento()"></div>
+
+        <div class="celula">
+            <div class="aula">
+                <strong>🎸 Banda Exemplo</strong>
+                07:00
+            </div>
+        </div>
+
+        <div class="celula"></div>
+        <div class="celula"></div>
+        <div class="celula"></div>
+        <div class="celula"></div>
+        <div class="celula"></div>
+    </div>
+
+    <!-- 08:00 -->
+    <div class="agenda-row">
+        <div class="hora">08:00</div>
+
+        <div class="celula"></div>
+        <div class="celula"></div>
+        <div class="celula"></div>
+        <div class="celula"></div>
+        <div class="celula"></div>
+        <div class="celula"></div>
+        <div class="celula"></div>
+    </div>
+
+    <!-- 09:00 -->
+    <div class="agenda-row">
+        <div class="hora">09:00</div>
+
+        <div class="celula"></div>
+        <div class="celula"></div>
+        <div class="celula"></div>
+        <div class="celula"></div>
+        <div class="celula"></div>
+        <div class="celula"></div>
+        <div class="celula"></div>
+    </div>
+
+</div>
+
+<!-- MODAL EVENTO -->
+
+<div class="modal-overlay" id="modal-evento-overlay">
+
+    <div class="modal" style="max-width:600px">
+
+        <button class="modal-close"
+                onclick="fecharModal('modal-evento-overlay')">
+            ✕
+        </button>
+
+        <h2>📅 Novo Evento</h2>
+
+        <div class="form-group">
+            <label>Nome da Banda / Evento</label>
+            <input
+                type="text"
+                id="ev-nome"
+                placeholder="EX: GRUPO PANTANEIRO">
+        </div>
+
+        <div class="form-row">
+
+            <div class="form-group">
+                <label>Data</label>
+                <input type="date" id="ev-data">
+            </div>
+
+            <div class="form-group">
+                <label>Horário</label>
+                <input type="time" id="ev-hora">
+            </div>
+
+        </div>
+
+        <div class="form-group">
+            <label>Observações</label>
+            <textarea
+                id="ev-obs"
+                rows="4"
+                placeholder="Informações do evento"></textarea>
+        </div>
+
+        <button
+            class="btn"
+            style="width:100%;justify-content:center"
+            onclick="salvarEvento()">
+
+            💾 Salvar Evento
+
+        </button>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+
+function abrirModalEvento(){
+
+    document.getElementById('ev-nome').value = '';
+    document.getElementById('ev-obs').value = '';
+
+    document.getElementById('ev-data').value =
+        new Date().toISOString().split('T')[0];
+
+    abrirModal('modal-evento-overlay');
+}
+
+function salvarEvento(){
+
+    const nome = document.getElementById('ev-nome').value.trim();
+
+    if(!nome){
+        alert('Informe o nome do evento.');
+        return;
+    }
+
+    alert('Evento pronto para integração com banco de dados.');
+}
+
+</script>
+{% endblock %}

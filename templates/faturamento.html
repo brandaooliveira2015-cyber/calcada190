@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+{% block title %}Faturamento{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .fat-periodo-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+    .fat-periodo-card { background: var(--bg3); border-radius: 10px; padding: 18px; border: 1px solid var(--border); cursor: pointer; transition: all 0.15s; }
+    .fat-periodo-card.active, .fat-periodo-card:hover { border-color: var(--laranja); background: var(--laranja-glow); }
+    .fat-periodo-card h3 { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 7px; }
+    .fat-periodo-card p { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 700; color: var(--verde); }
+
+    /* Abas */
+    .fat-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+    .fat-tab { padding: 10px 20px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; border-bottom: 3px solid transparent; color: var(--muted); transition: all 0.15s; background: none; border-top: none; border-left: none; border-right: none; }
+    .fat-tab.active { color: var(--laranja); border-bottom-color: var(--laranja); }
+    .fat-tab-panel { display: none; }
+    .fat-tab-panel.active { display: block; }
+
+    /* Gráfico anual */
+    .grafico-anual-wrap { background: var(--bg3); border-radius: 10px; padding: 20px; border: 1px solid var(--border); }
+    .grafico-anual-bars { display: flex; align-items: flex-end; gap: 6px; height: 140px; margin-top: 12px; }
+    .bar-col { display: flex; flex-direction: column; align-items: center; flex: 1; }
+    .bar-fill { width: 100%; border-radius: 4px 4px 0 0; background: var(--laranja); min-height: 4px; transition: height 0.4s; cursor: pointer; }
+    .bar-fill:hover { filter: brightness(1.2); }
+    .bar-label { font-size: 9px; color: var(--muted); margin-top: 4px; text-transform: uppercase; }
+    .bar-val { font-size: 9px; color: var(--text); font-family: 'Barlow Condensed', sans-serif; margin-top: 2px; font-weight: 700; }
+
+    /* Consumo de bandas */
+    .banda-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 14px; }
+    .banda-card-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .banda-nome { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 900; text-transform: uppercase; color: var(--text); }
+    .banda-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .banda-saldo { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 900; }
+    .banda-saldo.positivo { color: var(--verde); }
+    .banda-saldo.negativo { color: var(--vermelho); }
+    .consumo-linha { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; }
+    .consumo-linha:last-child { border-bottom: none; }
+    .filtro-banda-wrap { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filtro-banda-wrap select { background: var(--bg4); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 7px 12px; font-size: 13px; }
+
+    @media (max-width: 900px) {
+        .fat-periodo-cards { grid-template-columns: 1fr; }
+        .fat-tabs { flex-wrap: wrap; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title"><span>Faturamento</span></div>
+    <button class="btn btn-secondary" onclick="exportarPDF()">⬇ Exportar PDF</button>
+</div>
+
+<!-- CARDS PERÍODO -->
+<div class="fat-periodo-cards">
+    <div class="fat-periodo-card active" onclick="setFatPeriodo('hoje', this)">
+        <h3>Hoje</h3><p id="fat-hoje-val">R$ 0,00</p>
+    </div>
+    <div class="fat-periodo-card" onclick="setFatPeriodo('semana', this)">
+        <h3>Esta Semana</h3><p id="fat-semana-val">R$ 0,00</p>
+    </div>
+    <div class="fat-periodo-card" onclick="setFatPeriodo('mes', this)">
+        <h3>Este Mês</h3><p id="fat-mes-val">R$ 0,00</p>
+    </div>
+</div>
+
+<!-- CARDS MÉTRICAS -->
+<div class="cards">
+    <div class="card verde"><h3>Faturamento</h3><p id="fat-d-fat">R$ 0,00</p></div>
+    <div class="card verde"><h3>Lucro Bruto</h3><p id="fat-d-lucro-bruto">R$ 0,00</p></div>
+    <div class="card laranja"><h3>Lucro Líquido</h3><p id="fat-d-lucro-liq">R$ 0,00</p></div>
+    <div class="card vermelho"><h3>Custo Produtos</h3><p id="fat-d-custo">R$ 0,00</p></div>
+    <div class="card vermelho"><h3>Despesas</h3><p id="fat-d-desp">R$ 0,00</p></div>
+    <div class="card branco"><h3>Pedidos</h3><p id="fat-d-pedidos">0</p></div>
+</div>
+
+<!-- ABAS -->
+<div class="fat-tabs">
+    <button class="fat-tab active" onclick="setFatTab('visao-geral', this)">📊 Visão Geral</button>
+    <button class="fat-tab" onclick="setFatTab('anual', this)">📅 Gráfico Anual</button>
+    <button class="fat-tab" onclick="setFatTab('bandas', this)">🎸 Consumo de Bandas</button>
+</div>
+
+<!-- ABA: VISÃO GERAL -->
+<div class="fat-tab-panel active" id="tab-visao-geral">
+    <div class="charts-row">
+        <div class="section">
+            <div class="section-header"><h2>💳 Pagamentos no Período</h2></div>
+            <div class="chart-donut-wrap">
+                <canvas id="fat-donut" width="130" height="130"></canvas>
+                <div class="donut-legend" id="fat-donut-legend"></div>
+            </div>
+        </div>
+        <div class="section">
+            <div class="section-header"><h2>🏆 Mais Vendidos</h2></div>
+            <div class="chart-bar" id="fat-top-prod"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ABA: GRÁFICO ANUAL -->
+<div class="fat-tab-panel" id="tab-anual">
+    <div class="grafico-anual-wrap">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <h2 style="font-size:15px;font-weight:700">📅 Faturamento Mensal</h2>
+            <select id="sel-ano-anual" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 12px;font-size:13px" onchange="carregarAnual()"></select>
+        </div>
+        <div class="grafico-anual-bars" id="grafico-anual-bars"></div>
+    </div>
+</div>
+
+<!-- ABA: CONSUMO DE BANDAS -->
+<div class="fat-tab-panel" id="tab-bandas">
+    <div class="filtro-banda-wrap">
+        <select id="filtro-banda-status" onchange="carregarConsumosBandas()">
+            <option value="">Todos os riders</option>
+            <option value="ativo">Somente ativos</option>
+            <option value="encerrado">Somente encerrados</option>
+        </select>
+    </div>
+    <div id="bandas-lista">
+        <div class="empty-state"><div class="ico">🎸</div><p>Carregando...</p></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let fatPeriodoAtual = 'hoje';
+
+// ===== ABAS =====
+function setFatTab(tab, el) {
+    document.querySelectorAll('.fat-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.fat-tab-panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+    if (tab === 'anual') carregarAnual();
+    if (tab === 'bandas') carregarConsumosBandas();
+}
+
+// ===== PERÍODO =====
+function setFatPeriodo(p, el) {
+    fatPeriodoAtual = p;
+    document.querySelectorAll('.fat-periodo-card').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    carregarFaturamento();
+}
+
+// ===== DONUT =====
+function desenharDonut(canvasId, legendId, dados) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const legend = document.getElementById(legendId);
+    const total = Object.values(dados).reduce((a, b) => a + b, 0);
+    const cores  = { credito: '#4fc3f7', debito: '#1abc9c', dinheiro: '#00e676', pix: '#c39bd3' };
+    const labels = { credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro', pix: 'Pix' };
+    ctx.clearRect(0, 0, 130, 130);
+    const cx = 65, cy = 65, r = 50, ir = 33;
+    if (!total) {
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = r - ir; ctx.stroke();
+        if (legend) legend.innerHTML = '<div style="color:var(--muted);font-size:12px">Sem vendas ainda</div>';
+        return;
+    }
+    let start = -Math.PI / 2;
+    if (legend) legend.innerHTML = '';
+    Object.entries(dados).filter(([, v]) => v > 0).forEach(([f, v]) => {
+        const a = (v / total) * Math.PI * 2, cor = cores[f] || '#FF5500';
+        ctx.beginPath(); ctx.arc(cx, cy, r, start, start + a);
+        ctx.arc(cx, cy, ir, start + a, start, true);
+        ctx.closePath(); ctx.fillStyle = cor; ctx.fill(); start += a;
+        if (legend) legend.innerHTML += `<div class="donut-leg-item"><div class="donut-leg-color" style="background:${cor}"></div><span class="donut-leg-label">${labels[f] || f}</span><span class="donut-leg-val">${fmt(v)}</span></div>`;
+    });
+    ctx.fillStyle = '#1e1e1e'; ctx.beginPath(); ctx.arc(cx, cy, ir - 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#777'; ctx.font = '10px Barlow'; ctx.textAlign = 'center'; ctx.fillText('Total', cx, cy - 4);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Barlow Condensed'; ctx.fillText(fmt(total).replace('R$ ', 'R$'), cx, cy + 9);
+}
+
+// ===== TOP PRODUTOS =====
+function renderTopProdutos(elId, lista) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!lista.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Sem dados</div>'; return; }
+    const max = lista[0].total || 1;
+    const cores = ['#FF5500', '#ff7733', '#ff9955', '#ffbb88', '#ffd4bb'];
+    el.innerHTML = lista.slice(0, 5).map((p, i) => `
+        <div class="chart-bar-item">
+            <div class="chart-bar-label">
+                <span>${p.nome}</span>
+                <span class="qtd-info">${p.qtd} un.</span>
+                <span class="val-info">${fmt(p.total)}</span>
+            </div>
+            <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${(p.total / max) * 100}%;background:${cores[i]}"></div></div>
+        </div>`).join('');
+}
+
+// ===== FATURAMENTO PRINCIPAL =====
+async function carregarFaturamento() {
+    try {
+        const [dHoje, dSemana, dMes] = await Promise.all([
+            fetch('/api/dashboard?periodo=hoje').then(r => r.json()),
+            fetch('/api/dashboard?periodo=semana').then(r => r.json()),
+            fetch('/api/dashboard?periodo=mes').then(r => r.json())
+        ]);
+        document.getElementById('fat-hoje-val').textContent   = fmt(dHoje.faturamento);
+        document.getElementById('fat-semana-val').textContent = fmt(dSemana.faturamento);
+        document.getElementById('fat-mes-val').textContent    = fmt(dMes.faturamento);
+
+        const d = { hoje: dHoje, semana: dSemana, mes: dMes }[fatPeriodoAtual] || dHoje;
+        document.getElementById('fat-d-fat').textContent         = fmt(d.faturamento);
+        document.getElementById('fat-d-lucro-bruto').textContent = fmt(d.lucro_bruto);
+        document.getElementById('fat-d-lucro-liq').textContent   = fmt(d.lucro_liquido);
+        document.getElementById('fat-d-custo').textContent       = fmt(d.custo_produtos);
+        document.getElementById('fat-d-desp').textContent        = fmt(d.total_despesas);
+        document.getElementById('fat-d-pedidos').textContent     = d.total_pedidos;
+        desenharDonut('fat-donut', 'fat-donut-legend', d.por_forma_pagamento || {});
+        renderTopProdutos('fat-top-prod', d.top_produtos || []);
+    } catch(e) { console.error(e); }
+}
+
+// ===== GRÁFICO ANUAL =====
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+async function carregarAnual() {
+    const ano = document.getElementById('sel-ano-anual').value || new Date().getFullYear();
+    try {
+        const data = await fetch(`/api/dashboard/anual?ano=${ano}`).then(r => r.json());
+        const meses = data.meses || [];
+        const max   = Math.max(...meses, 1);
+        const wrap  = document.getElementById('grafico-anual-bars');
+        wrap.innerHTML = meses.map((val, i) => `
+            <div class="bar-col">
+                <div class="bar-val">${val > 0 ? fmt(val).replace('R$ ','') : ''}</div>
+                <div class="bar-fill" style="height:${Math.max((val / max) * 120, val > 0 ? 4 : 2)}px" title="${MESES[i]}: ${fmt(val)}"></div>
+                <div class="bar-label">${MESES[i]}</div>
+            </div>`).join('');
+    } catch(e) { console.error(e); }
+}
+
+function inicializarAnos() {
+    const sel = document.getElementById('sel-ano-anual');
+    const ano = new Date().getFullYear();
+    for (let a = ano; a >= ano - 2; a--) {
+        const opt = document.createElement('option');
+        opt.value = a; opt.textContent = a;
+        sel.appendChild(opt);
+    }
+}
+
+// ===== CONSUMO DE BANDAS =====
+async function carregarConsumosBandas() {
+    const status = document.getElementById('filtro-banda-status').value;
+    try {
+        const riders = await fetch('/api/riders').then(r => r.json()).catch(() => []);
+        let filtrados = riders;
+        if (status === 'ativo')      filtrados = riders.filter(r => !r.encerrado);
+        if (status === 'encerrado')  filtrados = riders.filter(r => r.encerrado);
+
+        const el = document.getElementById('bandas-lista');
+        if (!filtrados.length) {
+            el.innerHTML = '<div class="empty-state"><div class="ico">🎸</div><p>Nenhum rider encontrado</p></div>';
+            return;
+        }
+
+        el.innerHTML = filtrados.map(rider => {
+            const consumoTotal = (rider.consumo_extra || []).reduce((s, c) => s + c.valor, 0);
+            const saldo = rider.cache - consumoTotal;
+            const saldoCls = saldo >= 0 ? 'positivo' : 'negativo';
+            const statusTag = rider.encerrado
+                ? '<span class="tag-encerrado">Encerrado</span>'
+                : '<span class="tag-ativo">Ativo</span>';
+
+            const consumoLinhas = (rider.consumo_extra || []).length
+                ? (rider.consumo_extra || []).map(c => `
+                    <div class="consumo-linha">
+                        <div>
+                            <span style="font-weight:600">${c.produto_nome}</span>
+                            <span style="color:var(--muted)"> × ${c.quantidade}</span>
+                            <span style="font-size:11px;color:var(--muted);display:block">👤 ${c.pessoa}${c.hora ? ' · ' + c.hora : ''}</span>
+                        </div>
+                        <span style="color:var(--vermelho);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">− ${fmt(c.valor)}</span>
+                    </div>`).join('')
+                : '<div style="color:var(--muted);font-size:13px;padding:6px 0">Nenhum consumo extra</div>';
+
+            const itensRider = (rider.itens_rider || []).length
+                ? (rider.itens_rider || []).map(i =>
+                    `<span style="background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-size:12px;margin-right:6px;margin-bottom:4px;display:inline-block">${i.produto_nome} × ${i.quantidade} <span style="color:var(--verde)">(${i.entregues || 0} entregues)</span></span>`
+                  ).join('')
+                : '<span style="color:var(--muted);font-size:12px">Sem itens no rider</span>';
+
+            return `<div class="banda-card">
+                <div class="banda-card-header">
+                    <div>
+                        <div class="banda-nome">🎸 ${rider.nome}</div>
+                        <div class="banda-meta">📅 ${rider.data} &nbsp;·&nbsp; Cachê: ${fmt(rider.cache)} &nbsp;·&nbsp; ${statusTag}</div>
+                    </div>
+                    <div style="text-align:right">
+                        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Saldo do Cachê</div>
+                        <div class="banda-saldo ${saldoCls}">${fmt(saldo)}</div>
+                        <div style="font-size:11px;color:var(--muted)">Consumido: ${fmt(consumoTotal)}</div>
+                    </div>
+                </div>
+                <div style="margin-bottom:12px">
+                    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px">🍺 Rider da Casa</div>
+                    <div>${itensRider}</div>
+                </div>
+                <div>
+                    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px">💸 Consumo Extra</div>
+                    ${consumoLinhas}
+                    ${(rider.consumo_extra || []).length ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--muted)">Total consumido</span><span style="color:var(--vermelho);font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:15px">− ${fmt(consumoTotal)}</span></div>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+    } catch(e) { console.error(e); }
+}
+
+// ===== EXPORTAR PDF =====
+async function exportarPDF() {
+    const d = await fetch('/api/dashboard?periodo=' + fatPeriodoAtual).then(r => r.json());
+    const periodoLabel = { hoje: 'Hoje', semana: 'Esta Semana', mes: 'Este Mês' }[fatPeriodoAtual];
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relatório Calcada 190</title>
+    <style>body{font-family:Arial,sans-serif;padding:30px;color:#222;max-width:820px;margin:0 auto}h1{color:#FF5500;font-size:22px;margin-bottom:4px}h2{font-size:13px;color:#666;font-weight:normal;margin-bottom:22px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}.card{border:1px solid #ddd;border-radius:8px;padding:12px;text-align:center}.card h3{font-size:9px;text-transform:uppercase;color:#999;margin-bottom:5px}.card p{font-size:20px;font-weight:bold}.verde{color:#00aa55}.vermelho{color:#e74c3c}.laranja{color:#FF5500}.footer{margin-top:20px;font-size:10px;color:#999;text-align:center}@media print{button{display:none}}</style>
+    </head><body>
+    <h1>Calcada 190 — Relatório de Faturamento</h1>
+    <h2>Período: ${periodoLabel} — Gerado em ${new Date().toLocaleString('pt-BR')}</h2>
+    <div class="cards">
+        <div class="card"><h3>Faturamento</h3><p class="verde">${fmt(d.faturamento)}</p></div>
+        <div class="card"><h3>Lucro Bruto</h3><p class="verde">${fmt(d.lucro_bruto)}</p></div>
+        <div class="card"><h3>Lucro Líquido</h3><p class="laranja">${fmt(d.lucro_liquido)}</p></div>
+        <div class="card"><h3>Custo Produtos</h3><p class="vermelho">${fmt(d.custo_produtos)}</p></div>
+        <div class="card"><h3>Despesas</h3><p class="vermelho">${fmt(d.total_despesas)}</p></div>
+        <div class="card"><h3>Pedidos</h3><p>${d.total_pedidos}</p></div>
+    </div>
+    <div class="footer">Calcada 190 — Sistema de Gestão</div>
+    <br><button onclick="window.print()" style="background:#FF5500;color:#fff;border:none;padding:10px 22px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold">🖨 Imprimir / Salvar PDF</button>
+    </body></html>`);
+    win.document.close();
+}
+
+inicializarAnos();
+carregarFaturamento();
+</script>
+{% endblock %}

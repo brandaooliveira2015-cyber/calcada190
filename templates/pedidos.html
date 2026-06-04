@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}Pedidos do Dia{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title"><span>Pedidos</span> do Dia</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="filtro-origem" onchange="carregarPedidos()" style="width:150px;padding:8px 10px">
+            <option value="">Todas origens</option>
+            <option value="pdv">PDV Caixa</option>
+            <option value="lio">Maquininha LIO</option>
+        </select>
+        <select id="filtro-pag" onchange="carregarPedidos()" style="width:150px;padding:8px 10px">
+            <option value="">Todos pagamentos</option>
+            <option value="dinheiro">Dinheiro</option>
+            <option value="pix">Pix</option>
+            <option value="credito">Crédito</option>
+            <option value="debito">Débito</option>
+        </select>
+        <select id="filtro-mesa" onchange="carregarPedidos()" style="width:130px;padding:8px 10px">
+            <option value="">Todas as mesas</option>
+        </select>
+    </div>
+</div>
+
+<div class="cards">
+    <div class="card verde"><h3>Total Faturado</h3><p id="ped-fat">R$ 0,00</p></div>
+    <div class="card laranja"><h3>Lucro Bruto</h3><p id="ped-lucro">R$ 0,00</p></div>
+    <div class="card branco"><h3>Itens Vendidos</h3><p id="ped-qtd">0</p></div>
+</div>
+
+<!-- VISÃO DETALHADA POR MESA -->
+<div class="section">
+    <div class="section-header" style="justify-content:space-between">
+        <h2>🪑 Pedidos por Mesa</h2>
+        <div style="display:flex;gap:6px">
+            <button class="btn btn-secondary btn-sm" onclick="setView('mesa')" id="btn-view-mesa">Por Mesa</button>
+            <button class="btn btn-sm" onclick="setView('produto')" id="btn-view-prod">Por Produto</button>
+        </div>
+    </div>
+
+    <!-- VIEW: POR MESA -->
+    <div id="view-mesa">
+        <div id="lista-mesas"></div>
+    </div>
+
+    <!-- VIEW: POR PRODUTO -->
+    <div id="view-produto" style="display:none">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Hora</th>
+                        <th>Mesa</th>
+                        <th>Vendedor</th>
+                        <th>Produto</th>
+                        <th>Qtd.</th>
+                        <th>Total</th>
+                        <th>Lucro</th>
+                        <th>Pagamento</th>
+                        <th>Origem</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-pedidos"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let viewAtual = 'mesa';
+let todosPedidos = [];
+
+function setView(v) {
+    viewAtual = v;
+    document.getElementById('view-mesa').style.display    = v === 'mesa'    ? 'block' : 'none';
+    document.getElementById('view-produto').style.display = v === 'produto' ? 'block' : 'none';
+    document.getElementById('btn-view-mesa').className  = 'btn btn-sm ' + (v === 'mesa'    ? '' : 'btn-secondary');
+    document.getElementById('btn-view-prod').className  = 'btn btn-sm ' + (v === 'produto' ? '' : 'btn-secondary');
+    renderizar();
+}
+
+async function carregarPedidos() {
+    const origem = document.getElementById('filtro-origem').value;
+    const pag    = document.getElementById('filtro-pag').value;
+    let url = '/api/pedidos?';
+    if (origem) url += 'origem=' + origem + '&';
+    if (pag)    url += 'forma=' + pag + '&';
+
+    todosPedidos = await fetch(url).then(r => r.json()).catch(() => []);
+
+    // Popula filtro de mesas
+    const mesas = [...new Set(todosPedidos.map(p => p.mesa).filter(Boolean))].sort();
+    const sel = document.getElementById('filtro-mesa');
+    const mesaAtual = sel.value;
+    sel.innerHTML = '<option value="">Todas as mesas</option>' +
+        mesas.map(m => `<option value="${m}" ${m === mesaAtual ? 'selected' : ''}>${m}</option>`).join('');
+
+    // Filtra por mesa se selecionada
+    const mesaFiltro = sel.value;
+    const filtrados = mesaFiltro ? todosPedidos.filter(p => p.mesa === mesaFiltro) : todosPedidos;
+
+    document.getElementById('ped-fat').textContent   = fmt(filtrados.reduce((s, p) => s + p.total, 0));
+    document.getElementById('ped-lucro').textContent = fmt(filtrados.reduce((s, p) => s + p.lucro, 0));
+    document.getElementById('ped-qtd').textContent   = filtrados.reduce((s, p) => s + p.quantidade, 0);
+
+    renderizar();
+}
+
+function renderizar() {
+    const mesaFiltro = document.getElementById('filtro-mesa').value;
+    const filtrados  = mesaFiltro ? todosPedidos.filter(p => p.mesa === mesaFiltro) : todosPedidos;
+
+    if (viewAtual === 'mesa') renderPorMesa(filtrados);
+    else renderPorProduto(filtrados);
+}
+
+function renderPorMesa(pedidos) {
+    const container = document.getElementById('lista-mesas');
+    if (!pedidos.length) {
+        container.innerHTML = '<div class="empty-state"><div class="ico">🪑</div><p>Nenhum pedido encontrado</p></div>';
+        return;
+    }
+
+    // Agrupa por mesa
+    const grupos = {};
+    pedidos.forEach(p => {
+        const mesa = p.mesa || 'Caixa';
+        if (!grupos[mesa]) grupos[mesa] = { itens: [], total: 0, lucro: 0 };
+        grupos[mesa].itens.push(p);
+        grupos[mesa].total += p.total;
+        grupos[mesa].lucro += p.lucro;
+    });
+
+    container.innerHTML = Object.entries(grupos)
+        .sort(([a], [b]) => a.localeCompare(b, 'pt-BR', { numeric: true }))
+        .map(([mesa, grupo]) => `
+        <div style="margin-bottom:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+            <div style="background:var(--bg4);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                <div style="display:flex;align-items:center;gap:10px">
+                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--laranja)">🪑 ${mesa}</span>
+                    <span style="font-size:11px;color:var(--muted)">${grupo.itens.length} item(ns)</span>
+                </div>
+                <div style="display:flex;gap:16px;align-items:center">
+                    <span style="font-size:11px;color:var(--muted)">Lucro: <strong style="color:var(--laranja)">${fmt(grupo.lucro)}</strong></span>
+                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--verde)">${fmt(grupo.total)}</span>
+                </div>
+            </div>
+            <table style="width:100%;border-collapse:collapse">
+                <thead>
+                    <tr style="background:var(--bg3)">
+                        <th style="text-align:left;padding:7px 16px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Hora</th>
+                        <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Vendedor</th>
+                        <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Produto</th>
+                        <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Qtd</th>
+                        <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Total</th>
+                        <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Pag.</th>
+                        <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Origem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${grupo.itens.map(p => `
+                    <tr style="border-top:1px solid rgba(255,255,255,0.04)">
+                        <td style="padding:9px 16px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:15px;white-space:nowrap">${p.data}</td>
+                        <td style="padding:9px 10px;font-size:12px;color:var(--muted)">${p.vendedor_nome || '—'}</td>
+                        <td style="padding:9px 10px;font-weight:600;font-size:13px">${p.produto_nome}</td>
+                        <td style="padding:9px 10px;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700">${p.quantidade}×</td>
+                        <td style="padding:9px 10px;color:var(--verde);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.total)}</td>
+                        <td style="padding:9px 10px">${badgePag(p.forma_pagamento)}</td>
+                        <td style="padding:9px 10px">${badgeOrigem(p.origem)}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>`).join('');
+}
+
+function renderPorProduto(pedidos) {
+    const tbody = document.getElementById('lista-pedidos');
+    tbody.innerHTML = pedidos.length
+        ? pedidos.map(p => `<tr>
+            <td style="color:var(--muted);font-family:'Barlow Condensed',sans-serif;white-space:nowrap">${p.data}</td>
+            <td style="font-weight:600;color:var(--laranja)">${p.mesa || '—'}</td>
+            <td style="font-size:12px;color:var(--muted)">${p.vendedor_nome || '—'}</td>
+            <td style="font-weight:600">${p.produto_nome}</td>
+            <td style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700">${p.quantidade}×</td>
+            <td style="color:var(--verde);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.total)}</td>
+            <td style="color:var(--laranja);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.lucro)}</td>
+            <td>${badgePag(p.forma_pagamento)}</td>
+            <td>${badgeOrigem(p.origem)}</td>
+          </tr>`).join('')
+        : '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:28px">Nenhum pedido encontrado</td></tr>';
+}
+
+carregarPedidos();
+</script>
+{% endblock %}

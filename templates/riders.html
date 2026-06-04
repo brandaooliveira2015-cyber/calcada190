@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+{% block title %}Riders{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .rider-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .rider-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+    .rider-nome { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 900; color: var(--text); text-transform: uppercase; letter-spacing: 1px; }
+    .rider-data { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .cache-box { background: var(--bg4); border-radius: 10px; padding: 14px 18px; border: 1px solid var(--border); text-align: center; min-width: 160px; }
+    .cache-box .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 4px; }
+    .cache-box .valor { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 900; }
+    .cache-box .valor.positivo { color: var(--verde); }
+    .cache-box .valor.negativo { color: var(--vermelho); }
+    .cache-box .original { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .rider-section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
+    .balde-item { display: flex; align-items: center; justify-content: space-between; background: var(--bg4); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; border: 1px solid var(--border); }
+    .balde-info { display: flex; flex-direction: column; gap: 2px; }
+    .balde-nome { font-weight: 600; font-size: 13px; }
+    .balde-qtd { font-size: 11px; color: var(--muted); }
+    .balde-progresso { display: flex; align-items: center; gap: 10px; }
+    .balde-dots { display: flex; gap: 4px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; transition: all 0.2s; }
+    .dot.usado { background: var(--laranja); border-color: var(--laranja); }
+    .consumo-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; }
+    .consumo-item:last-child { border-bottom: none; }
+    .consumo-pessoa { color: var(--muted); font-size: 11px; margin-top: 1px; }
+    .consumo-valor { color: var(--vermelho); font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700; }
+    .status-encerrado { opacity: 0.5; pointer-events: none; }
+    .tag-encerrado { background: rgba(255,61,61,0.15); color: var(--vermelho); padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .tag-ativo { background: rgba(0,230,118,0.15); color: var(--verde); padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .riders-lista { display: flex; flex-direction: column; gap: 4px; }
+    .rider-item-lista { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg4); border-radius: 8px; border: 1px solid var(--border); cursor: pointer; transition: all 0.15s; }
+    .rider-item-lista:hover { border-color: var(--laranja); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title"><span>🎸</span> Riders</div>
+    <button class="btn" onclick="abrirModalNovoRider()">＋ Nova Banda</button>
+</div>
+
+<!-- RIDER ATIVO -->
+<div id="rider-ativo-wrap" style="display:none"></div>
+
+<!-- LISTA DE RIDERS -->
+<div class="section">
+    <div class="section-header">
+        <h2>📋 Histórico de Riders</h2>
+    </div>
+    <div class="riders-lista" id="riders-lista">
+        <div class="empty-state"><div class="ico">🎸</div><p>Nenhum rider cadastrado ainda</p></div>
+    </div>
+</div>
+
+<!-- ===== MODAL NOVO RIDER ===== -->
+<div class="modal-overlay" id="modal-rider-overlay">
+    <div class="modal" style="max-width:560px">
+        <button class="modal-close" onclick="fecharModal('modal-rider-overlay')">✕</button>
+        <h2>🎸 Nova Banda / Rider</h2>
+        <div class="form-row">
+            <div class="form-group" style="flex:2">
+                <label>Nome da Banda</label>
+                <input type="text" id="r-nome" placeholder="EX: GRUPO SAMBA SUL" oninput="this.value=this.value.toUpperCase()">
+            </div>
+            <div class="form-group">
+                <label>Data da Apresentação</label>
+                <input type="date" id="r-data">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Valor do Cachê (R$)</label>
+                <input type="text" id="r-cache" placeholder="R$ 0,00" oninput="mascaraPreco(this)" inputmode="numeric">
+            </div>
+        </div>
+
+        <div style="margin-bottom:8px;margin-top:4px">
+            <div class="rider-section-title">🍺 Rider Permitido (fornecido pela casa)</div>
+            <div id="r-itens-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+            <button class="btn btn-secondary btn-sm" onclick="adicionarItemRider()">＋ Adicionar Item</button>
+        </div>
+
+        <button class="btn" style="width:100%;justify-content:center;padding:13px;font-size:15px;margin-top:12px" onclick="salvarRider()">💾 Salvar Rider</button>
+    </div>
+</div>
+
+<!-- ===== MODAL CONSUMO EXTRA ===== -->
+<div class="modal-overlay" id="modal-consumo-overlay">
+    <div class="modal" style="max-width:420px">
+        <button class="modal-close" onclick="fecharModal('modal-consumo-overlay')">✕</button>
+        <h2>➕ Consumo Extra</h2>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Nome da Pessoa</label>
+                <input type="text" id="c-pessoa" placeholder="Ex: João" oninput="this.value=this.value.toUpperCase()">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Produto</label>
+                <select id="c-produto"></select>
+            </div>
+            <div class="form-group" style="max-width:90px">
+                <label>Qtd</label>
+                <input type="number" id="c-qtd" value="1" min="1">
+            </div>
+        </div>
+        <div style="background:var(--bg4);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--muted)">
+            Valor: <span id="c-valor-preview" style="color:var(--vermelho);font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:16px">R$ 0,00</span>
+            &nbsp;·&nbsp; Será descontado do cachê
+        </div>
+        <button class="btn btn-danger" style="width:100%;justify-content:center;padding:12px" onclick="salvarConsumo()">💸 Registrar Consumo</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let todosRiders = [];
+let todosProdutos = [];
+let riderAtualId = null;
+let itemRiderCount = 0;
+
+async function carregarTudo() {
+    todosProdutos = await fetch('/api/produtos').then(r => r.json()).catch(() => []);
+    todosRiders   = await fetch('/api/riders').then(r => r.json()).catch(() => []);
+    renderizarLista();
+    const ativo = todosRiders.find(r => !r.encerrado);
+    if (ativo) abrirRiderAtivo(ativo);
+}
+
+function renderizarLista() {
+    const el = document.getElementById('riders-lista');
+    if (!todosRiders.length) {
+        el.innerHTML = '<div class="empty-state"><div class="ico">🎸</div><p>Nenhum rider cadastrado ainda</p></div>';
+        return;
+    }
+    el.innerHTML = todosRiders.slice().reverse().map(r => {
+        const saldo = r.cache - (r.consumo_extra || []).reduce((s, c) => s + c.valor, 0);
+        const tag = r.encerrado
+            ? '<span class="tag-encerrado">Encerrado</span>'
+            : '<span class="tag-ativo">Ativo</span>';
+        return `<div class="rider-item-lista" onclick="abrirRiderAtivo(todosRiders.find(x=>x.id==${r.id}))">
+            <div>
+                <div style="font-weight:700;font-size:14px">${r.nome}</div>
+                <div style="font-size:11px;color:var(--muted)">${r.data} — Cachê: ${fmt(r.cache)}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:${saldo >= 0 ? 'var(--verde)' : 'var(--vermelho)'}">${fmt(saldo)}</span>
+                ${tag}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function abrirRiderAtivo(rider) {
+    riderAtualId = rider.id;
+    const wrap = document.getElementById('rider-ativo-wrap');
+    wrap.style.display = 'block';
+
+    const consumoTotal = (rider.consumo_extra || []).reduce((s, c) => s + c.valor, 0);
+    const saldo = rider.cache - consumoTotal;
+    const saldoCls = saldo >= 0 ? 'positivo' : 'negativo';
+    const encerrado = rider.encerrado;
+
+    // Rider permitido (baldes)
+    const baldesHtml = (rider.itens_rider || []).map((item, idx) => {
+        const totalDots = item.quantidade;
+        const usados = item.entregues || 0;
+        const dotsHtml = Array.from({length: totalDots}, (_, i) =>
+            `<div class="dot ${i < usados ? 'usado' : ''}" title="${i < usados ? 'Entregue' : 'Pendente'}"></div>`
+        ).join('');
+        return `<div class="balde-item">
+            <div class="balde-info">
+                <div class="balde-nome">${item.produto_nome}</div>
+                <div class="balde-qtd">${usados}/${totalDots} entregue${totalDots > 1 ? 's' : ''} · ${fmt(0)} (da casa)</div>
+            </div>
+            <div class="balde-progresso">
+                <div class="balde-dots">${dotsHtml}</div>
+                ${!encerrado && usados < totalDots ? `<button class="btn btn-green btn-sm" onclick="entregarItem(${rider.id},${idx})">✓ Entregar</button>` : ''}
+                ${usados >= totalDots ? '<span style="color:var(--verde);font-size:11px;font-weight:700">✅ Completo</span>' : ''}
+            </div>
+        </div>`;
+    }).join('') || '<div style="color:var(--muted);font-size:13px">Nenhum item no rider</div>';
+
+    // Consumo extra
+    const consumoHtml = (rider.consumo_extra || []).length
+        ? (rider.consumo_extra || []).map((c, idx) => `
+            <div class="consumo-item">
+                <div>
+                    <div>${c.produto_nome} × ${c.quantidade}</div>
+                    <div class="consumo-pessoa">👤 ${c.pessoa}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span class="consumo-valor">− ${fmt(c.valor)}</span>
+                    ${!encerrado ? `<button class="btn btn-danger btn-sm btn-icon" onclick="removerConsumo(${rider.id},${idx})">🗑</button>` : ''}
+                </div>
+            </div>`).join('')
+        : '<div style="color:var(--muted);font-size:13px;padding:8px 0">Nenhum consumo extra registrado</div>';
+
+    wrap.innerHTML = `
+    <div class="rider-card ${encerrado ? 'status-encerrado' : ''}">
+        <div class="rider-header">
+            <div>
+                <div class="rider-nome">🎸 ${rider.nome}</div>
+                <div class="rider-data">📅 ${rider.data}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <div class="cache-box">
+                    <div class="label">Saldo do Cachê</div>
+                    <div class="valor ${saldoCls}">${fmt(saldo)}</div>
+                    <div class="original">de ${fmt(rider.cache)}</div>
+                </div>
+                ${!encerrado ? `
+                <div style="display:flex;flex-direction:column;gap:6px">
+                    <button class="btn" onclick="abrirModalConsumo()">➕ Consumo Extra</button>
+                    <button class="btn btn-secondary btn-sm" onclick="encerrarRider(${rider.id})">🔒 Encerrar</button>
+                    <button class="btn btn-secondary btn-sm" onclick="gerarRelatorio(${rider.id})">📄 Relatório PDF</button>
+                </div>` : `
+                <div style="display:flex;flex-direction:column;gap:6px">
+                    <span class="tag-encerrado" style="font-size:12px;padding:6px 14px">Rider Encerrado</span>
+                    <button class="btn btn-secondary btn-sm" onclick="gerarRelatorio(${rider.id})">📄 Relatório PDF</button>
+                </div>`}
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;flex-wrap:wrap">
+            <div>
+                <div class="rider-section-title">🍺 Rider Permitido (da casa)</div>
+                ${baldesHtml}
+            </div>
+            <div>
+                <div class="rider-section-title">💸 Consumo Extra (desconta do cachê)</div>
+                ${consumoHtml}
+                ${(rider.consumo_extra || []).length ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--muted)">Total consumido</span><span style="color:var(--vermelho);font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:16px">− ${fmt(consumoTotal)}</span></div>` : ''}
+            </div>
+        </div>
+    </div>`;
+}
+
+// ===== MODAL NOVO RIDER =====
+function abrirModalNovoRider() {
+    document.getElementById('r-nome').value = '';
+    document.getElementById('r-cache').value = '';
+    document.getElementById('r-data').value = new Date().toISOString().split('T')[0];
+    document.getElementById('r-itens-lista').innerHTML = '';
+    itemRiderCount = 0;
+    adicionarItemRider();
+    abrirModal('modal-rider-overlay');
+    setTimeout(() => document.getElementById('r-nome').focus(), 200);
+}
+
+function adicionarItemRider() {
+    const idx = itemRiderCount++;
+    const opts = todosProdutos.map(p => `<option value="${p.id}" data-preco="${p.preco_venda}">${p.nome}</option>`).join('');
+    const div = document.createElement('div');
+    div.id = `rider-item-${idx}`;
+    div.style.cssText = 'display:flex;gap:8px;align-items:center';
+    div.innerHTML = `
+        <select style="flex:2">${opts}</select>
+        <input type="number" placeholder="Qtd" value="1" min="1" style="width:70px">
+        <button class="btn btn-danger btn-sm btn-icon" onclick="this.parentElement.remove()">✕</button>`;
+    document.getElementById('r-itens-lista').appendChild(div);
+}
+
+async function salvarRider() {
+    const nome  = document.getElementById('r-nome').value.trim().toUpperCase();
+    const data  = document.getElementById('r-data').value;
+    const cache = parseMoeda(document.getElementById('r-cache').value);
+    if (!nome) { alert('Informe o nome da banda!'); return; }
+    if (!cache) { alert('Informe o valor do cachê!'); return; }
+
+    const itens = [];
+    document.querySelectorAll('#r-itens-lista > div').forEach(div => {
+        const sel = div.querySelector('select');
+        const qtd = div.querySelector('input');
+        if (sel && qtd) {
+            const prod = todosProdutos.find(p => p.id == sel.value);
+            if (prod) itens.push({ produto_id: prod.id, produto_nome: prod.nome, quantidade: parseInt(qtd.value) || 1, entregues: 0 });
+        }
+    });
+
+    const resp = await fetch('/api/riders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, data, cache, itens_rider: itens, consumo_extra: [], encerrado: false })
+    });
+    if (resp.ok) { fecharModal('modal-rider-overlay'); await carregarTudo(); }
+    else { alert('Erro ao salvar. Tente novamente.'); }
+}
+
+// ===== ENTREGAR ITEM DO RIDER =====
+async function entregarItem(riderId, itemIdx) {
+    const resp = await fetch(`/api/riders/${riderId}/entregar/${itemIdx}`, { method: 'POST' });
+    const json = await resp.json();
+    if (json.ok) { await carregarTudo(); abrirRiderAtivo(todosRiders.find(r => r.id === riderId)); }
+    else { alert(json.erro || 'Erro ao entregar item.'); }
+}
+
+// ===== MODAL CONSUMO EXTRA =====
+function abrirModalConsumo() {
+    document.getElementById('c-pessoa').value = '';
+    document.getElementById('c-qtd').value = '1';
+    const sel = document.getElementById('c-produto');
+    sel.innerHTML = todosProdutos.map(p => `<option value="${p.id}" data-preco="${p.preco_venda}">${p.nome} — ${fmt(p.preco_venda)}</option>`).join('');
+    atualizarPreviewConsumo();
+    sel.onchange = atualizarPreviewConsumo;
+    document.getElementById('c-qtd').oninput = atualizarPreviewConsumo;
+    abrirModal('modal-consumo-overlay');
+    setTimeout(() => document.getElementById('c-pessoa').focus(), 200);
+}
+
+function atualizarPreviewConsumo() {
+    const sel  = document.getElementById('c-produto');
+    const opt  = sel.options[sel.selectedIndex];
+    const preco = parseFloat(opt?.dataset.preco || 0);
+    const qtd  = parseInt(document.getElementById('c-qtd').value) || 1;
+    document.getElementById('c-valor-preview').textContent = fmt(preco * qtd);
+}
+
+async function salvarConsumo() {
+    const pessoa = document.getElementById('c-pessoa').value.trim().toUpperCase();
+    const sel    = document.getElementById('c-produto');
+    const opt    = sel.options[sel.selectedIndex];
+    const qtd    = parseInt(document.getElementById('c-qtd').value) || 1;
+    const preco  = parseFloat(opt?.dataset.preco || 0);
+    const prodId = parseInt(sel.value);
+    const prod   = todosProdutos.find(p => p.id === prodId);
+    if (!pessoa) { alert('Informe o nome da pessoa!'); return; }
+    const consumo = { pessoa, produto_id: prodId, produto_nome: prod?.nome || '', quantidade: qtd, valor: preco * qtd };
+    const resp = await fetch(`/api/riders/${riderAtualId}/consumo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(consumo)
+    });
+    const json = await resp.json();
+    if (json.ok) { fecharModal('modal-consumo-overlay'); await carregarTudo(); abrirRiderAtivo(todosRiders.find(r => r.id === riderAtualId)); }
+    else { alert(json.erro || 'Erro ao registrar consumo.'); }
+}
+
+async function removerConsumo(riderId, idx) {
+    confirmar('🗑', 'Remover Consumo', 'Deseja remover este consumo?', 'Remover', async () => {
+        const resp = await fetch(`/api/riders/${riderId}/consumo/${idx}`, { method: 'DELETE' });
+        const json = await resp.json();
+        if (json.ok) { await carregarTudo(); abrirRiderAtivo(todosRiders.find(r => r.id === riderId)); }
+    });
+}
+
+async function encerrarRider(riderId) {
+    confirmar('🔒', 'Encerrar Rider', 'Deseja encerrar o rider desta banda? Não será possível editar após encerrar.', 'Encerrar', async () => {
+        const resp = await fetch(`/api/riders/${riderId}/encerrar`, { method: 'POST' });
+        const json = await resp.json();
+        if (json.ok) { await carregarTudo(); }
+    });
+}
+
+function gerarRelatorio(riderId) {
+    window.open(`/api/riders/${riderId}/relatorio`, '_blank');
+}
+
+carregarTudo();
+</script>
+{% endblock %}

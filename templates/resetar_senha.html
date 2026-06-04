@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Senha — Calçada 190ML</title>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --laranja: #FF5500; --laranja-dark: #cc4400; --bg: #0f0f0f; --bg3: #1e1e1e; --bg4: #252525; --border: #2a2a2a; --text: #f0f0f0; --muted: #777; --verde: #00e676; --vermelho: #ff3d3d; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .wrap { width: 100%; max-width: 380px; padding: 20px; }
+        .logo { text-align: center; margin-bottom: 28px; }
+        .logo h1 { font-family: 'Barlow Condensed', sans-serif; font-size: 32px; font-weight: 900; color: var(--laranja); letter-spacing: 3px; text-transform: uppercase; }
+        .logo p { color: var(--muted); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+        .card { background: var(--bg3); border: 1px solid var(--border); border-radius: 14px; padding: 28px; }
+        .card h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+        label { color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        input { background: var(--bg4); border: 1px solid var(--border); color: var(--text); padding: 11px 14px; border-radius: 8px; width: 100%; font-size: 14px; font-family: 'Barlow', sans-serif; transition: border-color 0.15s; }
+        input:focus { outline: none; border-color: var(--laranja); }
+        input::placeholder { color: #3a3a3a; }
+        .btn { background: var(--laranja); color: #fff; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; width: 100%; letter-spacing: 1px; transition: all 0.15s; text-transform: uppercase; margin-top: 6px; }
+        .btn:hover { background: var(--laranja-dark); }
+        .erro { background: rgba(255,61,61,0.1); border: 1px solid rgba(255,61,61,0.3); color: #ff8888; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+        .link { text-align: center; margin-top: 16px; }
+        .link a { color: var(--muted); font-size: 12px; text-decoration: none; transition: color 0.15s; }
+        .link a:hover { color: var(--laranja); }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="logo">
+        <h1>CALÇADA 190ML</h1>
+        <p>Sistema de Gestão</p>
+    </div>
+    <div class="card">
+        <h2>🔐 Nova Senha</h2>
+        {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+        <form method="POST" action="/resetar-senha/{{ token }}">
+            <div class="form-group">
+                <label>Nova Senha</label>
+                <input type="password" name="senha" placeholder="Mínimo 6 caracteres" required>
+            </div>
+            <div class="form-group">
+                <label>Confirmar Nova Senha</label>
+                <input type="password" name="senha2" placeholder="Repita a nova senha" required>
+            </div>
+            <button type="submit" class="btn">Salvar Nova Senha</button>
+        </form>
+        <div class="link"><a href="/login">← Voltar ao login</a></div>
+    </div>
+</div>
+</body>
+</html>
