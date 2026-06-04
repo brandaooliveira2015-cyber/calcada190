@@ -51,26 +51,43 @@
 
 {% block extra_scripts %}
 <script>
+let intervaloTempoReal = null;
+
 async function carregarFuncionarios() {
     const ranking = document.getElementById('func-ranking');
     const grid    = document.getElementById('func-grid');
 
     let pedidos = [];
-    try { pedidos = await fetch('/api/pedidos').then(r => r.json()); } catch (e) {}
+    try { 
+        pedidos = await fetch('/api/pedidos').then(r => r.json()); 
+    } catch (e) {
+        console.error("Erro ao buscar pedidos:", e);
+    }
 
-    // Agrupa por vendedor_nome (vem do app Android)
+    // Agrupa por vendedor_nome (capturado dinamicamente do app Android)
     const vendedores = {};
     pedidos.filter(p => p.vendedor_nome).forEach(p => {
         const key = p.vendedor_nome;
-        if (!vendedores[key]) vendedores[key] = {
-            nome: p.vendedor_nome,
-            setor: p.setor || '—',
-            fat: 0, qtd: 0, pedidos: 0
-        };
-        vendedores[key].fat    += p.total;
-        vendedores[key].qtd    += p.quantidade;
+        
+        // Extrai e formata os primeiros 6 dígitos do ID único da LIO para exibição limpa
+        const maquininhaId = p.lio_id ? p.lio_id.substring(0, 6).toUpperCase() : 'S/ID';
+
+        if (!vendedores[key]) {
+            vendedores[key] = {
+                nome: p.vendedor_nome,
+                setor: p.setor || '—',
+                lioId: maquininhaId,
+                fat: 0, 
+                qtd: 0, 
+                pedidos: 0
+            };
+        }
+        vendedores[key].fat     += p.total;
+        vendedores[key].qtd     += p.quantidade;
         vendedores[key].pedidos += 1;
+        
         if (p.setor) vendedores[key].setor = p.setor;
+        if (p.lio_id) vendedores[key].lioId = maquininhaId;
     });
 
     const lista = Object.values(vendedores).sort((a, b) => b.fat - a.fat);
@@ -88,7 +105,7 @@ async function carregarFuncionarios() {
         <div class="func-rank">
             <div class="pos ${medalClasses[i] || ''}">${medalhas[i] || (i + 1)}</div>
             <div class="info">
-                <div class="nome">${v.nome} <span style="font-size:11px;color:var(--muted)">(${v.setor})</span></div>
+                <div class="nome">${v.nome} <span style="font-size:11px;color:var(--muted)">(${v.setor}) - ID: ${v.lioId}</span></div>
                 <div class="sub">${v.qtd} itens &bull; ${v.pedidos} venda(s)</div>
             </div>
             <div class="fat">${fmt(v.fat)}</div>
@@ -97,7 +114,7 @@ async function carregarFuncionarios() {
     grid.innerHTML = lista.map(v => `
         <div class="func-card">
             <div class="func-nome">${v.nome}</div>
-            <div class="func-setor">📍 ${v.setor}</div>
+            <div class="func-setor">📍 ${v.setor} <span style="font-size:10px;color:var(--muted);margin-left:4px;">[ID: ${v.lioId}]</span></div>
             <div class="func-fat">${fmt(v.fat)}</div>
             <div class="func-sub">${v.qtd} itens &bull; ${v.pedidos} venda(s)</div>
         </div>`).join('');
@@ -108,12 +125,21 @@ function confirmarFecharCaixa() {
         `Isso vai <strong>encerrar o turno</strong>.<br>Os dados de faturamento continuam salvos no banco.<br><small style="color:var(--muted)">Amanhã o caixa começa do zero.</small>`,
         'Fechar Caixa',
         async () => {
-            await fetch('/api/fechar-caixa', { method: 'POST' });
-            carregarFuncionarios();
-            alert('✅ Caixa fechado! Bom descanso.');
+            try {
+                await fetch('/api/fechar-caixa', { method: 'POST' });
+                await carregarFuncionarios();
+                alert('✅ Caixa fechado! Bom descanso.');
+            } catch (error) {
+                alert('Erro ao fechar caixa. Tente novamente.');
+            }
         });
 }
 
+// Inicializa a primeira carga na tela
 carregarFuncionarios();
+
+// Mecanismo de Sincronização Automática em Tempo Real (Loop invisível a cada 5 segundos)
+if (intervaloTempoReal) clearInterval(intervaloTempoReal);
+intervaloTempoReal = setInterval(carregarFuncionarios, 5000);
 </script>
 {% endblock %}
