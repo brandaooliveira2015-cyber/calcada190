@@ -380,17 +380,49 @@ def toggle_disponibilidade(pid):
 @app.route('/api/pedidos', methods=['GET'])
 @login_required
 def listar_pedidos():
-    origem  = request.args.get('origem')
-    forma   = request.args.get('forma')
-    periodo = request.args.get('periodo', 'hoje')
-    limit   = request.args.get('limit', type=int)
-    inicio, fim = get_periodo_datas(periodo)
+    origem         = request.args.get('origem')
+    forma          = request.args.get('forma')
+    periodo        = request.args.get('periodo', 'hoje')
+    data_especifica = request.args.get('data')   # ex: 2026-06-06
+    mes_especifico  = request.args.get('mes')    # ex: 2026-06
+    limit          = request.args.get('limit', type=int)
+
+    # ── Define intervalo ────────────────────────────────────
+    if data_especifica:
+        # Um dia específico em horário local (MS = UTC-4)
+        from datetime import datetime, timedelta, timezone
+        tz_offset = timedelta(hours=-4)
+        tz_local  = timezone(tz_offset)
+        d = datetime.strptime(data_especifica, '%Y-%m-%d')
+        inicio = datetime(d.year, d.month, d.day, 0,  0,  0, tzinfo=tz_local).astimezone(timezone.utc)
+        fim    = datetime(d.year, d.month, d.day, 23, 59, 59, tzinfo=tz_local).astimezone(timezone.utc)
+        inicio = inicio.replace(tzinfo=None)
+        fim    = fim.replace(tzinfo=None)
+
+    elif mes_especifico:
+        # Mês completo
+        from datetime import datetime, timedelta, timezone
+        import calendar
+        tz_offset = timedelta(hours=-4)
+        tz_local  = timezone(tz_offset)
+        y, m = map(int, mes_especifico.split('-'))
+        ultimo_dia = calendar.monthrange(y, m)[1]
+        inicio = datetime(y, m, 1,          0,  0,  0, tzinfo=tz_local).astimezone(timezone.utc)
+        fim    = datetime(y, m, ultimo_dia, 23, 59, 59, tzinfo=tz_local).astimezone(timezone.utc)
+        inicio = inicio.replace(tzinfo=None)
+        fim    = fim.replace(tzinfo=None)
+
+    else:
+        inicio, fim = get_periodo_datas(periodo)
+
+    # ── Query ───────────────────────────────────────────────
     q = Pedido.query.filter(Pedido.data >= inicio, Pedido.data <= fim)
     if origem: q = q.filter(Pedido.origem == origem)
     if forma:  q = q.filter(Pedido.forma_pagamento == forma)
     q = q.order_by(Pedido.data.desc())
     if limit:  q = q.limit(limit)
     pedidos = q.all()
+
     return jsonify([{
         'id':              p.id,
         'mesa':            p.mesa,
@@ -406,7 +438,6 @@ def listar_pedidos():
         'setor':           p.setor,
         'data':            hora_local(p.data)
     } for p in pedidos])
-
 
 @app.route('/api/pedidos/agrupados', methods=['GET'])
 @login_required

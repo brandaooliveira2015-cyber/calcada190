@@ -1,50 +1,91 @@
 {% extends "base.html" %}
-{% block title %}Pedidos do Dia{% endblock %}
+{% block title %}Pedidos{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div class="page-title"><span>Pedidos</span> do Dia</div>
+<div class="page-header" style="flex-direction:column;align-items:flex-start;gap:12px">
+
+    <!-- Título com data do dia -->
+    <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+        <div>
+            <div class="page-title"><span>Pedidos</span> do Dia</div>
+            <div id="data-display" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="irParaHoje()">📅 Hoje</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportarCSV()">⬇ CSV</button>
+        </div>
+    </div>
+
+    <!-- Filtros linha 1: período rápido -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Período:</span>
+        <button class="btn-periodo btn-sm" data-p="hoje"     onclick="setPeriodo('hoje')">Hoje</button>
+        <button class="btn-periodo btn-sm" data-p="ontem"    onclick="setPeriodo('ontem')">Ontem</button>
+        <button class="btn-periodo btn-sm" data-p="semana"   onclick="setPeriodo('semana')">7 dias</button>
+        <button class="btn-periodo btn-sm" data-p="mes"      onclick="setPeriodo('mes')">Este mês</button>
+        <button class="btn-periodo btn-sm" data-p="mes_ant"  onclick="setPeriodo('mes_ant')">Mês passado</button>
+        <button class="btn-periodo btn-sm" data-p="ano"      onclick="setPeriodo('ano')">Este ano</button>
+        <button class="btn-periodo btn-sm" data-p="tudo"     onclick="setPeriodo('tudo')">Tudo</button>
+    </div>
+
+    <!-- Filtros linha 2: data específica e mês -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Ou:</span>
+        <div style="display:flex;align-items:center;gap:6px">
+            <label style="font-size:12px;color:var(--muted)">Data:</label>
+            <input type="date" id="filtro-data" onchange="setData(this.value)"
+                style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+            <label style="font-size:12px;color:var(--muted)">Mês:</label>
+            <input type="month" id="filtro-mes" onchange="setMes(this.value)"
+                style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">
+        </div>
+    </div>
+
+    <!-- Filtros linha 3: origem, pagamento, mesa -->
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <select id="filtro-origem" onchange="carregarPedidos()" style="width:150px;padding:8px 10px">
+        <select id="filtro-origem" onchange="carregarPedidos()" style="padding:7px 10px">
             <option value="">Todas origens</option>
             <option value="pdv">PDV Caixa</option>
             <option value="lio">Maquininha LIO</option>
         </select>
-        <select id="filtro-pag" onchange="carregarPedidos()" style="width:150px;padding:8px 10px">
+        <select id="filtro-pag" onchange="carregarPedidos()" style="padding:7px 10px">
             <option value="">Todos pagamentos</option>
             <option value="dinheiro">Dinheiro</option>
             <option value="pix">Pix</option>
             <option value="credito">Crédito</option>
             <option value="debito">Débito</option>
         </select>
-        <select id="filtro-mesa" onchange="carregarPedidos()" style="width:130px;padding:8px 10px">
+        <select id="filtro-mesa" onchange="renderizar()" style="padding:7px 10px">
             <option value="">Todas as mesas</option>
         </select>
+        <input type="text" id="filtro-produto" placeholder="🔍 Buscar produto..."
+            oninput="renderizar()"
+            style="padding:7px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px;width:180px">
     </div>
 </div>
 
+<!-- Cards resumo -->
 <div class="cards">
     <div class="card verde"><h3>Total Faturado</h3><p id="ped-fat">R$ 0,00</p></div>
     <div class="card laranja"><h3>Lucro Bruto</h3><p id="ped-lucro">R$ 0,00</p></div>
     <div class="card branco"><h3>Itens Vendidos</h3><p id="ped-qtd">0</p></div>
+    <div class="card branco"><h3>Pedidos</h3><p id="ped-count">0</p></div>
 </div>
 
-<!-- VISÃO DETALHADA POR MESA -->
+<!-- Visão -->
 <div class="section">
     <div class="section-header" style="justify-content:space-between">
-        <h2>🪑 Pedidos por Mesa</h2>
+        <h2 id="titulo-secao">🪑 Pedidos por Mesa</h2>
         <div style="display:flex;gap:6px">
-            <button class="btn btn-secondary btn-sm" onclick="setView('mesa')" id="btn-view-mesa">Por Mesa</button>
-            <button class="btn btn-sm" onclick="setView('produto')" id="btn-view-prod">Por Produto</button>
+            <button class="btn btn-secondary btn-sm" onclick="setView('mesa')"    id="btn-view-mesa">Por Mesa</button>
+            <button class="btn btn-sm"               onclick="setView('produto')" id="btn-view-prod">Por Produto</button>
         </div>
     </div>
 
-    <!-- VIEW: POR MESA -->
-    <div id="view-mesa">
-        <div id="lista-mesas"></div>
-    </div>
+    <div id="view-mesa"></div>
 
-    <!-- VIEW: POR PRODUTO -->
     <div id="view-produto" style="display:none">
         <div class="table-wrap">
             <table>
@@ -70,24 +111,104 @@
 
 {% block extra_scripts %}
 <script>
-let viewAtual = 'mesa';
+let viewAtual  = 'mesa';
 let todosPedidos = [];
+let periodoAtual = 'hoje';
+let dataEspecifica = '';
+let mesEspecifico  = '';
 
-function setView(v) {
-    viewAtual = v;
-    document.getElementById('view-mesa').style.display    = v === 'mesa'    ? 'block' : 'none';
-    document.getElementById('view-produto').style.display = v === 'produto' ? 'block' : 'none';
-    document.getElementById('btn-view-mesa').className  = 'btn btn-sm ' + (v === 'mesa'    ? '' : 'btn-secondary');
-    document.getElementById('btn-view-prod').className  = 'btn btn-sm ' + (v === 'produto' ? '' : 'btn-secondary');
-    renderizar();
+// ── Inicializa ──────────────────────────────────────────────
+(function init() {
+    const hoje = new Date();
+    document.getElementById('filtro-data').value  = hoje.toISOString().split('T')[0];
+    document.getElementById('filtro-mes').value   = hoje.toISOString().slice(0,7);
+    atualizarDataDisplay();
+    setPeriodo('hoje');
+    setInterval(atualizarDataDisplay, 60000);
+})();
+
+function atualizarDataDisplay() {
+    const agora = new Date();
+    const opts  = { weekday:'long', day:'2-digit', month:'long', year:'numeric' };
+    const str   = agora.toLocaleDateString('pt-BR', opts);
+    document.getElementById('data-display').textContent =
+        str.charAt(0).toUpperCase() + str.slice(1) + ' · ' +
+        agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 }
 
+// ── Período rápido ──────────────────────────────────────────
+function setPeriodo(p) {
+    periodoAtual   = p;
+    dataEspecifica = '';
+    mesEspecifico  = '';
+    document.getElementById('filtro-data').value = '';
+    document.getElementById('filtro-mes').value  = '';
+    document.querySelectorAll('.btn-periodo').forEach(b => {
+        b.className = 'btn btn-sm btn-periodo ' + (b.dataset.p === p ? '' : 'btn-secondary');
+    });
+    atualizarTitulo();
+    carregarPedidos();
+}
+
+// ── Data específica ─────────────────────────────────────────
+function setData(val) {
+    dataEspecifica = val;
+    mesEspecifico  = '';
+    periodoAtual   = '';
+    document.getElementById('filtro-mes').value = '';
+    document.querySelectorAll('.btn-periodo').forEach(b => b.className = 'btn btn-sm btn-periodo btn-secondary');
+    atualizarTitulo();
+    carregarPedidos();
+}
+
+// ── Mês específico ──────────────────────────────────────────
+function setMes(val) {
+    mesEspecifico  = val;
+    dataEspecifica = '';
+    periodoAtual   = '';
+    document.getElementById('filtro-data').value = '';
+    document.querySelectorAll('.btn-periodo').forEach(b => b.className = 'btn btn-sm btn-periodo btn-secondary');
+    atualizarTitulo();
+    carregarPedidos();
+}
+
+function irParaHoje() {
+    const hoje = new Date().toISOString().split('T')[0];
+    document.getElementById('filtro-data').value = hoje;
+    setData(hoje);
+}
+
+function atualizarTitulo() {
+    let label = '';
+    if (dataEspecifica) {
+        const d = new Date(dataEspecifica + 'T12:00:00');
+        label = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+    } else if (mesEspecifico) {
+        const [y,m] = mesEspecifico.split('-');
+        const d = new Date(y, m-1, 1);
+        label = d.toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+        label = label.charAt(0).toUpperCase() + label.slice(1);
+    } else {
+        const map = { hoje:'Hoje', ontem:'Ontem', semana:'Últimos 7 dias',
+                      mes:'Este mês', mes_ant:'Mês passado', ano:'Este ano', tudo:'Todo o período' };
+        label = map[periodoAtual] || '';
+    }
+    document.querySelector('.page-title').innerHTML = `<span>Pedidos</span> · ${label}`;
+    document.getElementById('titulo-secao').textContent =
+        viewAtual === 'mesa' ? '🪑 Pedidos por Mesa · ' + label : '📦 Por Produto · ' + label;
+}
+
+// ── Carrega da API ──────────────────────────────────────────
 async function carregarPedidos() {
     const origem = document.getElementById('filtro-origem').value;
-    const pag    = document.getElementById('filtro-pag').value;
+    const forma  = document.getElementById('filtro-pag').value;
+
     let url = '/api/pedidos?';
+    if (dataEspecifica) url += 'data=' + dataEspecifica + '&';
+    else if (mesEspecifico) url += 'mes=' + mesEspecifico + '&';
+    else if (periodoAtual) url += 'periodo=' + periodoAtual + '&';
     if (origem) url += 'origem=' + origem + '&';
-    if (pag)    url += 'forma=' + pag + '&';
+    if (forma)  url += 'forma=' + forma + '&';
 
     todosPedidos = await fetch(url).then(r => r.json()).catch(() => []);
 
@@ -96,46 +217,64 @@ async function carregarPedidos() {
     const sel = document.getElementById('filtro-mesa');
     const mesaAtual = sel.value;
     sel.innerHTML = '<option value="">Todas as mesas</option>' +
-        mesas.map(m => `<option value="${m}" ${m === mesaAtual ? 'selected' : ''}>${m}</option>`).join('');
+        mesas.map(m => `<option value="${m}" ${m===mesaAtual?'selected':''}>${m}</option>`).join('');
 
-    // Filtra por mesa se selecionada
-    const mesaFiltro = sel.value;
-    const filtrados = mesaFiltro ? todosPedidos.filter(p => p.mesa === mesaFiltro) : todosPedidos;
+    atualizarCards();
+    renderizar();
+}
 
-    document.getElementById('ped-fat').textContent   = fmt(filtrados.reduce((s, p) => s + p.total, 0));
-    document.getElementById('ped-lucro').textContent = fmt(filtrados.reduce((s, p) => s + p.lucro, 0));
-    document.getElementById('ped-qtd').textContent   = filtrados.reduce((s, p) => s + p.quantidade, 0);
+function filtrados() {
+    const mesa    = document.getElementById('filtro-mesa').value;
+    const produto = document.getElementById('filtro-produto').value.toLowerCase().trim();
+    return todosPedidos.filter(p =>
+        (!mesa    || p.mesa === mesa) &&
+        (!produto || p.produto_nome.toLowerCase().includes(produto))
+    );
+}
 
+function atualizarCards() {
+    const f = filtrados();
+    document.getElementById('ped-fat').textContent   = fmt(f.reduce((s,p) => s+p.total, 0));
+    document.getElementById('ped-lucro').textContent = fmt(f.reduce((s,p) => s+p.lucro, 0));
+    document.getElementById('ped-qtd').textContent   = f.reduce((s,p) => s+p.quantidade, 0);
+    document.getElementById('ped-count').textContent = f.length;
+}
+
+// ── View ────────────────────────────────────────────────────
+function setView(v) {
+    viewAtual = v;
+    document.getElementById('view-mesa').style.display    = v==='mesa'    ? 'block' : 'none';
+    document.getElementById('view-produto').style.display = v==='produto' ? 'block' : 'none';
+    document.getElementById('btn-view-mesa').className = 'btn btn-sm ' + (v==='mesa'    ? '' : 'btn-secondary');
+    document.getElementById('btn-view-prod').className = 'btn btn-sm ' + (v==='produto' ? '' : 'btn-secondary');
+    atualizarTitulo();
     renderizar();
 }
 
 function renderizar() {
-    const mesaFiltro = document.getElementById('filtro-mesa').value;
-    const filtrados  = mesaFiltro ? todosPedidos.filter(p => p.mesa === mesaFiltro) : todosPedidos;
-
-    if (viewAtual === 'mesa') renderPorMesa(filtrados);
-    else renderPorProduto(filtrados);
+    atualizarCards();
+    const f = filtrados();
+    if (viewAtual === 'mesa') renderPorMesa(f);
+    else renderPorProduto(f);
 }
 
+// ── Render por mesa ─────────────────────────────────────────
 function renderPorMesa(pedidos) {
-    const container = document.getElementById('lista-mesas');
+    const container = document.getElementById('view-mesa');
     if (!pedidos.length) {
         container.innerHTML = '<div class="empty-state"><div class="ico">🪑</div><p>Nenhum pedido encontrado</p></div>';
         return;
     }
-
-    // Agrupa por mesa
     const grupos = {};
     pedidos.forEach(p => {
         const mesa = p.mesa || 'Caixa';
-        if (!grupos[mesa]) grupos[mesa] = { itens: [], total: 0, lucro: 0 };
+        if (!grupos[mesa]) grupos[mesa] = { itens:[], total:0, lucro:0 };
         grupos[mesa].itens.push(p);
         grupos[mesa].total += p.total;
         grupos[mesa].lucro += p.lucro;
     });
-
     container.innerHTML = Object.entries(grupos)
-        .sort(([a], [b]) => a.localeCompare(b, 'pt-BR', { numeric: true }))
+        .sort(([a],[b]) => a.localeCompare(b,'pt-BR',{numeric:true}))
         .map(([mesa, grupo]) => `
         <div style="margin-bottom:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
             <div style="background:var(--bg4);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -149,22 +288,20 @@ function renderPorMesa(pedidos) {
                 </div>
             </div>
             <table style="width:100%;border-collapse:collapse">
-                <thead>
-                    <tr style="background:var(--bg3)">
-                        <th style="text-align:left;padding:7px 16px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Hora</th>
-                        <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Vendedor</th>
-                        <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Produto</th>
-                        <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Qtd</th>
-                        <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Total</th>
-                        <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Pag.</th>
-                        <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Origem</th>
-                    </tr>
-                </thead>
+                <thead><tr style="background:var(--bg3)">
+                    <th style="text-align:left;padding:7px 16px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Hora</th>
+                    <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Vendedor</th>
+                    <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Produto</th>
+                    <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Qtd</th>
+                    <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Total</th>
+                    <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Pag.</th>
+                    <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Origem</th>
+                </tr></thead>
                 <tbody>
                     ${grupo.itens.map(p => `
                     <tr style="border-top:1px solid rgba(255,255,255,0.04)">
                         <td style="padding:9px 16px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:15px;white-space:nowrap">${p.data}</td>
-                        <td style="padding:9px 10px;font-size:12px;color:var(--muted)">${p.vendedor_nome || '—'}</td>
+                        <td style="padding:9px 10px;font-size:12px;color:var(--muted)">${p.vendedor_nome||'—'}</td>
                         <td style="padding:9px 10px;font-weight:600;font-size:13px">${p.produto_nome}</td>
                         <td style="padding:9px 10px;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700">${p.quantidade}×</td>
                         <td style="padding:9px 10px;color:var(--verde);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.total)}</td>
@@ -176,13 +313,14 @@ function renderPorMesa(pedidos) {
         </div>`).join('');
 }
 
+// ── Render por produto ──────────────────────────────────────
 function renderPorProduto(pedidos) {
     const tbody = document.getElementById('lista-pedidos');
     tbody.innerHTML = pedidos.length
         ? pedidos.map(p => `<tr>
             <td style="color:var(--muted);font-family:'Barlow Condensed',sans-serif;white-space:nowrap">${p.data}</td>
-            <td style="font-weight:600;color:var(--laranja)">${p.mesa || '—'}</td>
-            <td style="font-size:12px;color:var(--muted)">${p.vendedor_nome || '—'}</td>
+            <td style="font-weight:600;color:var(--laranja)">${p.mesa||'—'}</td>
+            <td style="font-size:12px;color:var(--muted)">${p.vendedor_nome||'—'}</td>
             <td style="font-weight:600">${p.produto_nome}</td>
             <td style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700">${p.quantidade}×</td>
             <td style="color:var(--verde);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.total)}</td>
@@ -193,6 +331,40 @@ function renderPorProduto(pedidos) {
         : '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:28px">Nenhum pedido encontrado</td></tr>';
 }
 
-carregarPedidos();
+// ── Export CSV ──────────────────────────────────────────────
+function exportarCSV() {
+    const f = filtrados();
+    if (!f.length) { alert('Nenhum dado para exportar'); return; }
+    const cols = ['Data','Mesa','Vendedor','Produto','Qtd','Total','Lucro','Pagamento','Origem'];
+    const rows = f.map(p => [
+        p.data, p.mesa||'', p.vendedor_nome||'', p.produto_nome,
+        p.quantidade, p.total.toFixed(2), p.lucro.toFixed(2),
+        p.forma_pagamento, p.origem
+    ]);
+    const csv = [cols, ...rows].map(r => r.join(';')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
+    a.download = 'pedidos_' + (dataEspecifica || mesEspecifico || periodoAtual) + '.csv';
+    a.click();
+}
 </script>
+
+<style>
+.btn-periodo {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+}
+.btn-periodo:not(.btn-secondary) {
+    background: var(--laranja);
+    border-color: var(--laranja);
+    color: #fff;
+    font-weight: 700;
+}
+</style>
 {% endblock %}
