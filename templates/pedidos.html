@@ -2,100 +2,509 @@
 {% block title %}Pedidos{% endblock %}
 
 {% block content %}
-<div class="page-header" style="flex-direction:column;align-items:flex-start;gap:12px">
 
-    <!-- Título com data do dia -->
-    <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+<style>
+/* ── Tokens ─────────────────────────────────────────────── */
+:root {
+    --laranja: #FF6B00;
+    --laranja2: #FF8C33;
+    --verde:   #00C97A;
+    --muted:   #6B6B6B;
+    --border:  rgba(255,255,255,0.07);
+    --bg2:     #141414;
+    --bg3:     #1A1A1A;
+    --bg4:     #1F1F1F;
+    --text:    #F0F0F0;
+    --radius:  10px;
+}
+
+/* ── Header da página ───────────────────────────────────── */
+.ped-header {
+    padding: 28px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+}
+.ped-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.ped-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text);
+    line-height: 1;
+}
+.ped-title span { color: var(--laranja); }
+.ped-subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+}
+.ped-header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* ── Barra de filtros ───────────────────────────────────── */
+.filter-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.filter-section {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.filter-divider {
+    width: 1px;
+    height: 28px;
+    background: var(--border);
+    margin: 0 4px;
+}
+
+/* Botões de período */
+.btn-p {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 7px 16px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .15s;
+}
+.btn-p:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+.btn-p.ativo {
+    background: var(--laranja);
+    border-color: var(--laranja);
+    color: #fff;
+}
+
+/* Range de datas */
+.date-range {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 5px 12px;
+    transition: border-color .15s;
+}
+.date-range:focus-within { border-color: var(--laranja); }
+.date-range label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+.date-range input[type=date] {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'Barlow Condensed', sans-serif;
+    outline: none;
+    padding: 0;
+    width: 130px;
+    cursor: pointer;
+}
+.date-range .sep {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 0 2px;
+}
+
+/* Selects e busca */
+.filter-select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color .15s;
+    outline: none;
+}
+.filter-select:focus { border-color: var(--laranja); }
+.filter-input {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    width: 180px;
+    outline: none;
+    transition: border-color .15s;
+}
+.filter-input:focus { border-color: var(--laranja); }
+.filter-input::placeholder { color: var(--muted); }
+
+/* ── Cards de resumo ────────────────────────────────────── */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+.summary-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s;
+}
+.summary-card:hover { border-color: rgba(255,255,255,0.12); }
+.summary-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+}
+.summary-card.fat::before  { background: var(--verde); }
+.summary-card.lucro::before { background: var(--laranja); }
+.summary-card.itens::before { background: #4A9EFF; }
+.summary-card.count::before { background: #A78BFA; }
+.summary-card h3 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+.summary-card p {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+}
+.summary-card.fat p  { color: var(--verde); }
+.summary-card.lucro p { color: var(--laranja); }
+.summary-card.itens p,
+.summary-card.count p { color: var(--text); }
+
+/* ── Seção de pedidos ───────────────────────────────────── */
+.pedidos-section {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.pedidos-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.pedidos-section-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+}
+.pedidos-section-title span { color: var(--text); }
+.view-btns { display: flex; gap: 6px; }
+.btn-view {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .15s;
+}
+.btn-view:hover { color: var(--text); }
+.btn-view.ativo { background: var(--bg4); border-color: rgba(255,255,255,0.15); color: var(--text); }
+
+/* ── Grupos de mesa ─────────────────────────────────────── */
+.mesa-grupo {
+    border-bottom: 1px solid var(--border);
+}
+.mesa-grupo:last-child { border-bottom: none; }
+.mesa-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 20px;
+    background: rgba(255,255,255,0.02);
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.mesa-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.mesa-nome {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--laranja);
+}
+.mesa-count {
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--bg4);
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+.mesa-totais {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+.mesa-lucro {
+    font-size: 12px;
+    color: var(--muted);
+}
+.mesa-lucro strong { color: var(--laranja2); }
+.mesa-total {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--verde);
+}
+
+/* ── Tabela interna ─────────────────────────────────────── */
+.ped-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.ped-table th {
+    text-align: left;
+    padding: 7px 16px;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+    background: rgba(255,255,255,0.01);
+}
+.ped-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    vertical-align: middle;
+}
+.ped-table tr:last-child td { border-bottom: none; }
+.ped-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* Células específicas */
+.td-hora {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    color: var(--muted);
+    white-space: nowrap;
+}
+.td-data-badge {
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--bg4);
+    padding: 1px 7px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 2px;
+}
+.td-produto { font-weight: 600; font-size: 13px; }
+.td-qtd {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+}
+.td-total {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--verde);
+}
+.td-lucro {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    color: var(--laranja2);
+}
+.td-vendedor { font-size: 12px; color: var(--muted); }
+
+/* Badges */
+.badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.badge-dinheiro { background: rgba(0,201,122,.12); color: #00C97A; }
+.badge-pix      { background: rgba(0,201,122,.12); color: #00C97A; }
+.badge-credito  { background: rgba(74,158,255,.12); color: #4A9EFF; }
+.badge-debito   { background: rgba(167,139,250,.12); color: #A78BFA; }
+.badge-pdv      { background: rgba(255,107,0,.10); color: var(--laranja); }
+.badge-lio      { background: rgba(255,255,255,.06); color: var(--muted); }
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+}
+.empty-state .ico { font-size: 36px; margin-bottom: 10px; opacity: .4; }
+.empty-state p { font-size: 13px; }
+
+/* Botão de ação */
+.btn-action {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 7px 16px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.btn-action:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+.btn-action.primary {
+    background: var(--laranja);
+    border-color: var(--laranja);
+    color: #fff;
+}
+</style>
+
+<!-- ── Header ─────────────────────────────────────────────── -->
+<div class="ped-header">
+    <div class="ped-title-row">
         <div>
-            <div class="page-title"><span>Pedidos</span> do Dia</div>
-            <div id="data-display" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
+            <div class="ped-title"><span>Pedidos</span> · <span id="titulo-periodo">Hoje</span></div>
+            <div class="ped-subtitle" id="data-display"></div>
         </div>
-        <div style="display:flex;gap:8px">
-            <button class="btn btn-secondary btn-sm" onclick="irParaHoje()">📅 Hoje</button>
-            <button class="btn btn-secondary btn-sm" onclick="exportarCSV()">⬇ CSV</button>
-        </div>
-    </div>
-
-    <!-- Filtros linha 1: período rápido -->
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Período:</span>
-        <button class="btn-periodo btn-sm" data-p="hoje"     onclick="setPeriodo('hoje')">Hoje</button>
-        <button class="btn-periodo btn-sm" data-p="ontem"    onclick="setPeriodo('ontem')">Ontem</button>
-        <button class="btn-periodo btn-sm" data-p="semana"   onclick="setPeriodo('semana')">7 dias</button>
-        <button class="btn-periodo btn-sm" data-p="mes"      onclick="setPeriodo('mes')">Este mês</button>
-        <button class="btn-periodo btn-sm" data-p="mes_ant"  onclick="setPeriodo('mes_ant')">Mês passado</button>
-        <button class="btn-periodo btn-sm" data-p="ano"      onclick="setPeriodo('ano')">Este ano</button>
-        <button class="btn-periodo btn-sm" data-p="tudo"     onclick="setPeriodo('tudo')">Tudo</button>
-    </div>
-
-    <!-- Filtros linha 2: data específica e mês -->
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Ou:</span>
-        <div style="display:flex;align-items:center;gap:6px">
-            <label style="font-size:12px;color:var(--muted)">Data:</label>
-            <input type="date" id="filtro-data" onchange="setData(this.value)"
-                style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">
-        </div>
-        <div style="display:flex;align-items:center;gap:6px">
-            <label style="font-size:12px;color:var(--muted)">Mês:</label>
-            <input type="month" id="filtro-mes" onchange="setMes(this.value)"
-                style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">
+        <div class="ped-header-actions">
+            <button class="btn-action" onclick="exportarCSV()">⬇ CSV</button>
         </div>
     </div>
 
-    <!-- Filtros linha 3: origem, pagamento, mesa -->
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <select id="filtro-origem" onchange="carregarPedidos()" style="padding:7px 10px">
-            <option value="">Todas origens</option>
+    <!-- Linha 1: períodos rápidos + range de datas -->
+    <div class="filter-bar">
+        <!-- Períodos -->
+        <div class="filter-section">
+            <button class="btn-p ativo" data-p="hoje"   onclick="setPeriodo('hoje')">Hoje</button>
+            <button class="btn-p"       data-p="ontem"  onclick="setPeriodo('ontem')">Ontem</button>
+            <button class="btn-p"       data-p="semana" onclick="setPeriodo('semana')">7 dias</button>
+        </div>
+
+        <div class="filter-divider"></div>
+
+        <!-- Range de datas -->
+        <div class="date-range">
+            <label>De</label>
+            <input type="date" id="data-de" onchange="setRange()">
+            <span class="sep">→</span>
+            <label>até</label>
+            <input type="date" id="data-ate" onchange="setRange()">
+        </div>
+    </div>
+
+    <!-- Linha 2: filtros adicionais -->
+    <div class="filter-bar" style="margin-top:10px">
+        <select id="filtro-origem" class="filter-select" onchange="carregarPedidos()">
+            <option value="">Todas as origens</option>
             <option value="pdv">PDV Caixa</option>
             <option value="lio">Maquininha LIO</option>
         </select>
-        <select id="filtro-pag" onchange="carregarPedidos()" style="padding:7px 10px">
-            <option value="">Todos pagamentos</option>
+        <select id="filtro-pag" class="filter-select" onchange="carregarPedidos()">
+            <option value="">Todos os pagamentos</option>
             <option value="dinheiro">Dinheiro</option>
             <option value="pix">Pix</option>
             <option value="credito">Crédito</option>
             <option value="debito">Débito</option>
         </select>
-        <select id="filtro-mesa" onchange="renderizar()" style="padding:7px 10px">
+        <select id="filtro-mesa" class="filter-select" onchange="renderizar()">
             <option value="">Todas as mesas</option>
         </select>
-        <input type="text" id="filtro-produto" placeholder="🔍 Buscar produto..."
-            oninput="renderizar()"
-            style="padding:7px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px;width:180px">
+        <input type="text" id="filtro-produto" class="filter-input"
+            placeholder="🔍 Buscar produto..." oninput="renderizar()">
     </div>
 </div>
 
-<!-- Cards resumo -->
-<div class="cards">
-    <div class="card verde"><h3>Total Faturado</h3><p id="ped-fat">R$ 0,00</p></div>
-    <div class="card laranja"><h3>Lucro Bruto</h3><p id="ped-lucro">R$ 0,00</p></div>
-    <div class="card branco"><h3>Itens Vendidos</h3><p id="ped-qtd">0</p></div>
-    <div class="card branco"><h3>Pedidos</h3><p id="ped-count">0</p></div>
+<!-- ── Cards resumo ──────────────────────────────────────── -->
+<div class="summary-grid">
+    <div class="summary-card fat">
+        <h3>Total Faturado</h3>
+        <p id="ped-fat">R$ 0,00</p>
+    </div>
+    <div class="summary-card lucro">
+        <h3>Lucro Bruto</h3>
+        <p id="ped-lucro">R$ 0,00</p>
+    </div>
+    <div class="summary-card itens">
+        <h3>Itens Vendidos</h3>
+        <p id="ped-qtd">0</p>
+    </div>
+    <div class="summary-card count">
+        <h3>Pedidos</h3>
+        <p id="ped-count">0</p>
+    </div>
 </div>
 
-<!-- Visão -->
-<div class="section">
-    <div class="section-header" style="justify-content:space-between">
-        <h2 id="titulo-secao">🪑 Pedidos por Mesa</h2>
-        <div style="display:flex;gap:6px">
-            <button class="btn btn-secondary btn-sm" onclick="setView('mesa')"    id="btn-view-mesa">Por Mesa</button>
-            <button class="btn btn-sm"               onclick="setView('produto')" id="btn-view-prod">Por Produto</button>
+<!-- ── Seção de listagem ─────────────────────────────────── -->
+<div class="pedidos-section">
+    <div class="pedidos-section-header">
+        <div class="pedidos-section-title">
+            <span id="titulo-secao">Pedidos por Mesa</span>
+        </div>
+        <div class="view-btns">
+            <button class="btn-view ativo" id="btn-view-mesa"    onclick="setView('mesa')">Por Mesa</button>
+            <button class="btn-view"       id="btn-view-produto" onclick="setView('produto')">Por Produto</button>
         </div>
     </div>
 
     <div id="view-mesa"></div>
 
     <div id="view-produto" style="display:none">
-        <div class="table-wrap">
-            <table>
+        <div style="overflow-x:auto">
+            <table class="ped-table">
                 <thead>
                     <tr>
-                        <th>Hora</th>
+                        <th>Data / Hora</th>
                         <th>Mesa</th>
                         <th>Vendedor</th>
                         <th>Produto</th>
-                        <th>Qtd.</th>
+                        <th>Qtd</th>
                         <th>Total</th>
                         <th>Lucro</th>
                         <th>Pagamento</th>
@@ -107,21 +516,21 @@
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-let viewAtual  = 'mesa';
+let viewAtual    = 'mesa';
 let todosPedidos = [];
 let periodoAtual = 'hoje';
-let dataEspecifica = '';
-let mesEspecifico  = '';
+let modoRange    = false;
 
-// ── Inicializa ──────────────────────────────────────────────
+// ── Inicializa ───────────────────────────────────────────────
 (function init() {
-    const hoje = new Date();
-    document.getElementById('filtro-data').value  = hoje.toISOString().split('T')[0];
-    document.getElementById('filtro-mes').value   = hoje.toISOString().slice(0,7);
+    const hoje = new Date().toISOString().split('T')[0];
+    document.getElementById('data-de').value  = hoje;
+    document.getElementById('data-ate').value = hoje;
     atualizarDataDisplay();
     setPeriodo('hoje');
     setInterval(atualizarDataDisplay, 60000);
@@ -136,83 +545,88 @@ function atualizarDataDisplay() {
         agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 }
 
-// ── Período rápido ──────────────────────────────────────────
+// ── Período rápido ───────────────────────────────────────────
 function setPeriodo(p) {
-    periodoAtual   = p;
-    dataEspecifica = '';
-    mesEspecifico  = '';
-    document.getElementById('filtro-data').value = '';
-    document.getElementById('filtro-mes').value  = '';
-    document.querySelectorAll('.btn-periodo').forEach(b => {
-        b.className = 'btn btn-sm btn-periodo ' + (b.dataset.p === p ? '' : 'btn-secondary');
+    periodoAtual = p;
+    modoRange    = false;
+
+    // Atualiza botões
+    document.querySelectorAll('.btn-p').forEach(b => {
+        b.classList.toggle('ativo', b.dataset.p === p);
     });
-    atualizarTitulo();
+
+    // Preenche o range visualmente para orientar o usuário
+    const hoje = new Date();
+    const fmt  = d => d.toISOString().split('T')[0];
+    if (p === 'hoje') {
+        document.getElementById('data-de').value  = fmt(hoje);
+        document.getElementById('data-ate').value = fmt(hoje);
+    } else if (p === 'ontem') {
+        const ontem = new Date(hoje); ontem.setDate(ontem.getDate() - 1);
+        document.getElementById('data-de').value  = fmt(ontem);
+        document.getElementById('data-ate').value = fmt(ontem);
+    } else if (p === 'semana') {
+        const ini = new Date(hoje); ini.setDate(ini.getDate() - 6);
+        document.getElementById('data-de').value  = fmt(ini);
+        document.getElementById('data-ate').value = fmt(hoje);
+    }
+
+    atualizarTituloPeriodo();
     carregarPedidos();
 }
 
-// ── Data específica ─────────────────────────────────────────
-function setData(val) {
-    dataEspecifica = val;
-    mesEspecifico  = '';
-    periodoAtual   = '';
-    document.getElementById('filtro-mes').value = '';
-    document.querySelectorAll('.btn-periodo').forEach(b => b.className = 'btn btn-sm btn-periodo btn-secondary');
-    atualizarTitulo();
+// ── Range manual ─────────────────────────────────────────────
+function setRange() {
+    const de  = document.getElementById('data-de').value;
+    const ate = document.getElementById('data-ate').value;
+    if (!de || !ate) return;
+
+    modoRange    = true;
+    periodoAtual = '';
+    document.querySelectorAll('.btn-p').forEach(b => b.classList.remove('ativo'));
+
+    atualizarTituloPeriodo();
     carregarPedidos();
 }
 
-// ── Mês específico ──────────────────────────────────────────
-function setMes(val) {
-    mesEspecifico  = val;
-    dataEspecifica = '';
-    periodoAtual   = '';
-    document.getElementById('filtro-data').value = '';
-    document.querySelectorAll('.btn-periodo').forEach(b => b.className = 'btn btn-sm btn-periodo btn-secondary');
-    atualizarTitulo();
-    carregarPedidos();
-}
-
-function irParaHoje() {
-    const hoje = new Date().toISOString().split('T')[0];
-    document.getElementById('filtro-data').value = hoje;
-    setData(hoje);
-}
-
-function atualizarTitulo() {
+function atualizarTituloPeriodo() {
     let label = '';
-    if (dataEspecifica) {
-        const d = new Date(dataEspecifica + 'T12:00:00');
-        label = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
-    } else if (mesEspecifico) {
-        const [y,m] = mesEspecifico.split('-');
-        const d = new Date(y, m-1, 1);
-        label = d.toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
-        label = label.charAt(0).toUpperCase() + label.slice(1);
+    if (modoRange) {
+        const de  = document.getElementById('data-de').value;
+        const ate = document.getElementById('data-ate').value;
+        const fmtBR = v => {
+            const [y,m,d] = v.split('-');
+            return `${d}/${m}/${y}`;
+        };
+        label = de === ate ? fmtBR(de) : `${fmtBR(de)} → ${fmtBR(ate)}`;
     } else {
-        const map = { hoje:'Hoje', ontem:'Ontem', semana:'Últimos 7 dias',
-                      mes:'Este mês', mes_ant:'Mês passado', ano:'Este ano', tudo:'Todo o período' };
+        const map = { hoje:'Hoje', ontem:'Ontem', semana:'Últimos 7 dias' };
         label = map[periodoAtual] || '';
     }
-    document.querySelector('.page-title').innerHTML = `<span>Pedidos</span> · ${label}`;
+    document.getElementById('titulo-periodo').textContent = label;
     document.getElementById('titulo-secao').textContent =
-        viewAtual === 'mesa' ? '🪑 Pedidos por Mesa · ' + label : '📦 Por Produto · ' + label;
+        (viewAtual === 'mesa' ? 'Pedidos por Mesa' : 'Por Produto') + ' · ' + label;
 }
 
-// ── Carrega da API ──────────────────────────────────────────
+// ── Carrega da API ───────────────────────────────────────────
 async function carregarPedidos() {
     const origem = document.getElementById('filtro-origem').value;
     const forma  = document.getElementById('filtro-pag').value;
 
     let url = '/api/pedidos?';
-    if (dataEspecifica) url += 'data=' + dataEspecifica + '&';
-    else if (mesEspecifico) url += 'mes=' + mesEspecifico + '&';
-    else if (periodoAtual) url += 'periodo=' + periodoAtual + '&';
-    if (origem) url += 'origem=' + origem + '&';
-    if (forma)  url += 'forma=' + forma + '&';
+    if (modoRange) {
+        const de  = document.getElementById('data-de').value;
+        const ate = document.getElementById('data-ate').value;
+        url += `data_de=${de}&data_ate=${ate}&`;
+    } else if (periodoAtual) {
+        url += `periodo=${periodoAtual}&`;
+    }
+    if (origem) url += `origem=${origem}&`;
+    if (forma)  url += `forma=${forma}&`;
 
     todosPedidos = await fetch(url).then(r => r.json()).catch(() => []);
 
-    // Popula filtro de mesas
+    // Popula mesas
     const mesas = [...new Set(todosPedidos.map(p => p.mesa).filter(Boolean))].sort();
     const sel = document.getElementById('filtro-mesa');
     const mesaAtual = sel.value;
@@ -223,6 +637,7 @@ async function carregarPedidos() {
     renderizar();
 }
 
+// ── Filtro local ─────────────────────────────────────────────
 function filtrados() {
     const mesa    = document.getElementById('filtro-mesa').value;
     const produto = document.getElementById('filtro-produto').value.toLowerCase().trim();
@@ -240,14 +655,14 @@ function atualizarCards() {
     document.getElementById('ped-count').textContent = f.length;
 }
 
-// ── View ────────────────────────────────────────────────────
+// ── Views ────────────────────────────────────────────────────
 function setView(v) {
     viewAtual = v;
-    document.getElementById('view-mesa').style.display    = v==='mesa'    ? 'block' : 'none';
-    document.getElementById('view-produto').style.display = v==='produto' ? 'block' : 'none';
-    document.getElementById('btn-view-mesa').className = 'btn btn-sm ' + (v==='mesa'    ? '' : 'btn-secondary');
-    document.getElementById('btn-view-prod').className = 'btn btn-sm ' + (v==='produto' ? '' : 'btn-secondary');
-    atualizarTitulo();
+    document.getElementById('view-mesa').style.display    = v === 'mesa'    ? 'block' : 'none';
+    document.getElementById('view-produto').style.display = v === 'produto' ? 'block' : 'none';
+    document.getElementById('btn-view-mesa').classList.toggle('ativo', v === 'mesa');
+    document.getElementById('btn-view-produto').classList.toggle('ativo', v === 'produto');
+    atualizarTituloPeriodo();
     renderizar();
 }
 
@@ -258,13 +673,18 @@ function renderizar() {
     else renderPorProduto(f);
 }
 
-// ── Render por mesa ─────────────────────────────────────────
+// ── Render por mesa ──────────────────────────────────────────
 function renderPorMesa(pedidos) {
     const container = document.getElementById('view-mesa');
     if (!pedidos.length) {
-        container.innerHTML = '<div class="empty-state"><div class="ico">🪑</div><p>Nenhum pedido encontrado</p></div>';
+        container.innerHTML = `<div class="empty-state"><div class="ico">🪑</div><p>Nenhum pedido encontrado</p></div>`;
         return;
     }
+
+    // Detecta se é multi-dia (mostra data nas linhas)
+    const multiDia = modoRange &&
+        document.getElementById('data-de').value !== document.getElementById('data-ate').value;
+
     const grupos = {};
     pedidos.forEach(p => {
         const mesa = p.mesa || 'Caixa';
@@ -273,98 +693,130 @@ function renderPorMesa(pedidos) {
         grupos[mesa].total += p.total;
         grupos[mesa].lucro += p.lucro;
     });
+
     container.innerHTML = Object.entries(grupos)
-        .sort(([a],[b]) => a.localeCompare(b,'pt-BR',{numeric:true}))
+        .sort(([a],[b]) => a.localeCompare(b, 'pt-BR', { numeric:true }))
         .map(([mesa, grupo]) => `
-        <div style="margin-bottom:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
-            <div style="background:var(--bg4);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-                <div style="display:flex;align-items:center;gap:10px">
-                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--laranja)">🪑 ${mesa}</span>
-                    <span style="font-size:11px;color:var(--muted)">${grupo.itens.length} item(ns)</span>
+        <div class="mesa-grupo">
+            <div class="mesa-header">
+                <div class="mesa-label">
+                    <span class="mesa-nome">🪑 ${mesa}</span>
+                    <span class="mesa-count">${grupo.itens.length} item(ns)</span>
                 </div>
-                <div style="display:flex;gap:16px;align-items:center">
-                    <span style="font-size:11px;color:var(--muted)">Lucro: <strong style="color:var(--laranja)">${fmt(grupo.lucro)}</strong></span>
-                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--verde)">${fmt(grupo.total)}</span>
+                <div class="mesa-totais">
+                    <span class="mesa-lucro">Lucro: <strong>${fmt(grupo.lucro)}</strong></span>
+                    <span class="mesa-total">${fmt(grupo.total)}</span>
                 </div>
             </div>
-            <table style="width:100%;border-collapse:collapse">
-                <thead><tr style="background:var(--bg3)">
-                    <th style="text-align:left;padding:7px 16px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Hora</th>
-                    <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Vendedor</th>
-                    <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Produto</th>
-                    <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Qtd</th>
-                    <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Total</th>
-                    <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Pag.</th>
-                    <th style="text-align:left;padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Origem</th>
+            <table class="ped-table">
+                <thead><tr>
+                    <th>${multiDia ? 'Data / Hora' : 'Hora'}</th>
+                    <th>Vendedor</th>
+                    <th>Produto</th>
+                    <th>Qtd</th>
+                    <th>Total</th>
+                    <th>Pagamento</th>
+                    <th>Origem</th>
                 </tr></thead>
                 <tbody>
-                    ${grupo.itens.map(p => `
-                    <tr style="border-top:1px solid rgba(255,255,255,0.04)">
-                        <td style="padding:9px 16px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:15px;white-space:nowrap">${p.data}</td>
-                        <td style="padding:9px 10px;font-size:12px;color:var(--muted)">${p.vendedor_nome||'—'}</td>
-                        <td style="padding:9px 10px;font-weight:600;font-size:13px">${p.produto_nome}</td>
-                        <td style="padding:9px 10px;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700">${p.quantidade}×</td>
-                        <td style="padding:9px 10px;color:var(--verde);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.total)}</td>
-                        <td style="padding:9px 10px">${badgePag(p.forma_pagamento)}</td>
-                        <td style="padding:9px 10px">${badgeOrigem(p.origem)}</td>
+                ${grupo.itens.map(p => `
+                    <tr>
+                        <td class="td-hora">
+                            ${multiDia ? `<div class="td-data-badge">${dataFormatada(p.data)}</div><br>` : ''}
+                            ${horaFormatada(p.data)}
+                        </td>
+                        <td class="td-vendedor">${p.vendedor_nome || '—'}</td>
+                        <td class="td-produto">${p.produto_nome}</td>
+                        <td class="td-qtd">${p.quantidade}×</td>
+                        <td class="td-total">${fmt(p.total)}</td>
+                        <td>${badgePag(p.forma_pagamento)}</td>
+                        <td>${badgeOrigem(p.origem)}</td>
                     </tr>`).join('')}
                 </tbody>
             </table>
         </div>`).join('');
 }
 
-// ── Render por produto ──────────────────────────────────────
+// ── Render por produto ───────────────────────────────────────
 function renderPorProduto(pedidos) {
     const tbody = document.getElementById('lista-pedidos');
     tbody.innerHTML = pedidos.length
         ? pedidos.map(p => `<tr>
-            <td style="color:var(--muted);font-family:'Barlow Condensed',sans-serif;white-space:nowrap">${p.data}</td>
-            <td style="font-weight:600;color:var(--laranja)">${p.mesa||'—'}</td>
-            <td style="font-size:12px;color:var(--muted)">${p.vendedor_nome||'—'}</td>
-            <td style="font-weight:600">${p.produto_nome}</td>
-            <td style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700">${p.quantidade}×</td>
-            <td style="color:var(--verde);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.total)}</td>
-            <td style="color:var(--laranja);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${fmt(p.lucro)}</td>
+            <td class="td-hora">
+                <div class="td-data-badge">${dataFormatada(p.data)}</div><br>
+                ${horaFormatada(p.data)}
+            </td>
+            <td style="font-weight:600;color:var(--laranja)">${p.mesa || '—'}</td>
+            <td class="td-vendedor">${p.vendedor_nome || '—'}</td>
+            <td class="td-produto">${p.produto_nome}</td>
+            <td class="td-qtd">${p.quantidade}×</td>
+            <td class="td-total">${fmt(p.total)}</td>
+            <td class="td-lucro">${fmt(p.lucro)}</td>
             <td>${badgePag(p.forma_pagamento)}</td>
             <td>${badgeOrigem(p.origem)}</td>
           </tr>`).join('')
-        : '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:28px">Nenhum pedido encontrado</td></tr>';
+        : '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:40px">Nenhum pedido encontrado</td></tr>';
 }
 
-// ── Export CSV ──────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────
+function fmt(v) {
+    return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+
+function dataFormatada(str) {
+    if (!str) return '';
+    // Aceita "2026-06-07 14:30" ou "07/06/2026 14:30"
+    const d = new Date(str.replace(' ','T'));
+    if (isNaN(d)) return str;
+    return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
+}
+
+function horaFormatada(str) {
+    if (!str) return '—';
+    const d = new Date(str.replace(' ','T'));
+    if (isNaN(d)) {
+        // fallback: pega só a hora do string original
+        const m = str.match(/(\d{2}:\d{2})/);
+        return m ? m[1] : str;
+    }
+    return d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+}
+
+function badgePag(f) {
+    const map = {
+        dinheiro: ['badge-dinheiro', '💵 Dinheiro'],
+        pix:      ['badge-pix',      '⚡ Pix'],
+        credito:  ['badge-credito',  '💳 Crédito'],
+        debito:   ['badge-debito',   '🏦 Débito'],
+    };
+    const [cls, label] = map[f] || ['badge-pdv', f || '—'];
+    return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function badgeOrigem(o) {
+    if (o === 'lio') return `<span class="badge badge-lio">LIO</span>`;
+    return `<span class="badge badge-pdv">PDV</span>`;
+}
+
+// ── Export CSV ───────────────────────────────────────────────
 function exportarCSV() {
     const f = filtrados();
     if (!f.length) { alert('Nenhum dado para exportar'); return; }
-    const cols = ['Data','Mesa','Vendedor','Produto','Qtd','Total','Lucro','Pagamento','Origem'];
+    const cols = ['Data','Hora','Mesa','Vendedor','Produto','Qtd','Total','Lucro','Pagamento','Origem'];
     const rows = f.map(p => [
-        p.data, p.mesa||'', p.vendedor_nome||'', p.produto_nome,
+        dataFormatada(p.data), horaFormatada(p.data),
+        p.mesa||'', p.vendedor_nome||'', p.produto_nome,
         p.quantidade, p.total.toFixed(2), p.lucro.toFixed(2),
         p.forma_pagamento, p.origem
     ]);
     const csv = [cols, ...rows].map(r => r.join(';')).join('\n');
     const a = document.createElement('a');
     a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
-    a.download = 'pedidos_' + (dataEspecifica || mesEspecifico || periodoAtual) + '.csv';
+    const nome = modoRange
+        ? `${document.getElementById('data-de').value}_${document.getElementById('data-ate').value}`
+        : periodoAtual;
+    a.download = `pedidos_${nome}.csv`;
     a.click();
 }
 </script>
-
-<style>
-.btn-periodo {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    padding: 5px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all .15s;
-}
-.btn-periodo:not(.btn-secondary) {
-    background: var(--laranja);
-    border-color: var(--laranja);
-    color: #fff;
-    font-weight: 700;
-}
-</style>
 {% endblock %}
