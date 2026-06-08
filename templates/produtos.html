@@ -68,11 +68,25 @@
             <div class="form-group">
                 <label>Categoria</label>
                 <select id="mp-categoria">
-                    <option value="Bebidas">🍺 Bebidas</option>
-                    <option value="Drinks">🍹 Drinks</option>
-                    <option value="Narguile">💨 Narguile</option>
-                    <option value="Porcao">🍗 Porção</option>
-                    <option value="Variedades">🎯 Variedades</option>
+                    <option value="Águas">💧 Águas</option>
+                    <option value="Cervejas">🍺 Cervejas</option>
+                    <option value="Cigarros">🚬 Cigarros</option>
+                    <option value="Copo Completo">🥃 Copo Completo</option>
+                    <option value="Copão">🍶 Copão</option>
+                    <option value="Doces">🍬 Doces</option>
+                    <option value="Doses">🥃 Doses</option>
+                    <option value="Energéticos">⚡ Energéticos</option>
+                    <option value="Halls">🌬️ Halls</option>
+                    <option value="Isqueiros">🔥 Isqueiros</option>
+                    <option value="Narguilé">💨 Narguilé</option>
+                    <option value="Paiero">🌿 Paiero</option>
+                    <option value="Porções">🍗 Porções</option>
+                    <option value="Refrigerantes">🥤 Refrigerantes</option>
+                    <option value="Salgadinhos">🍿 Salgadinhos</option>
+                    <option value="Sucos">🍊 Sucos</option>
+                    <option value="Trident">🪄 Trident</option>
+                    <option value="Uísques">🥃 Uísques</option>
+                    <option value="Vodka">🍸 Vodka</option>
                 </select>
             </div>
             <div class="form-group">
@@ -180,7 +194,7 @@ function abrirModalProduto() {
     ['mp-nome', 'mp-venda', 'mp-custo'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('mp-estoque').value = '0';
     document.getElementById('mp-estoque-min').value = '0';
-    document.getElementById('mp-categoria').value = 'Bebidas';
+    document.getElementById('mp-categoria').value = 'Cervejas';
     document.getElementById('mp-foto').value = '';
     const prev = document.getElementById('mp-foto-preview');
     prev.style.display = 'none'; prev.src = '';
