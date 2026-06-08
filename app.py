@@ -1062,5 +1062,66 @@ def excluir_evento(eid):
     db.session.commit()
     return jsonify({'ok': True})
 
+
+# ============================================================
+# API VENDEDORES ATIVOS — Check-in do app Android
+# ============================================================
+
+# Dicionário em memória: { "nome_vendedor": { dados } }
+# Simples e eficiente — reseta quando o servidor reinicia (ok, é por dia)
+vendedores_ativos = {}
+
+@app.route('/app/checkin', methods=['POST'])
+@app_auth_required
+def app_checkin():
+    data          = request.json or {}
+    nome          = data.get('vendedor_nome', '').strip()
+    setor         = data.get('setor', '').strip()
+    lio_id        = data.get('lio_id', '')
+    if not nome:
+        return jsonify({'erro': 'Nome obrigatório'}), 400
+
+    vendedores_ativos[nome] = {
+        'vendedor_nome': nome,
+        'setor':         setor,
+        'lio_id':        lio_id,
+        'ultimo_ping':   datetime.utcnow().isoformat(),
+        'online':        True
+    }
+    return jsonify({'ok': True})
+
+@app.route('/app/heartbeat', methods=['POST'])
+@app_auth_required
+def app_heartbeat():
+    data = request.json or {}
+    nome = data.get('vendedor_nome', '').strip()
+    if nome and nome in vendedores_ativos:
+        vendedores_ativos[nome]['ultimo_ping'] = datetime.utcnow().isoformat()
+        vendedores_ativos[nome]['online']      = True
+    return jsonify({'ok': True})
+
+@app.route('/app/checkout', methods=['POST'])
+@app_auth_required
+def app_checkout():
+    data = request.json or {}
+    nome = data.get('vendedor_nome', '').strip()
+    if nome in vendedores_ativos:
+        del vendedores_ativos[nome]
+    return jsonify({'ok': True})
+
+@app.route('/api/vendedores-ativos', methods=['GET'])
+@login_required
+def listar_vendedores_ativos():
+    # Marca como offline quem não mandou heartbeat há mais de 3 minutos
+    agora = datetime.utcnow()
+    for nome, v in vendedores_ativos.items():
+        try:
+            ultimo = datetime.fromisoformat(v['ultimo_ping'])
+            v['online'] = (agora - ultimo).total_seconds() < 180
+        except:
+            v['online'] = False
+    return jsonify(list(vendedores_ativos.values()))
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

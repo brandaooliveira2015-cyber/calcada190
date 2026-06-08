@@ -19,6 +19,8 @@
     .medal-1 { color: #FFD700; }
     .medal-2 { color: #C0C0C0; }
     .medal-3 { color: #CD7F32; }
+    .badge-online  { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; background:rgba(0,230,118,.15); color:#00e676; margin-left:6px; }
+    .badge-offline { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; background:rgba(255,61,61,.12); color:#ff3d3d; margin-left:6px; }
 </style>
 {% endblock %}
 
@@ -40,7 +42,7 @@
     <div class="section">
         <div class="section-header">
             <h2>📱 Vendedores Ativos Hoje</h2>
-            <span style="font-size:11px;color:var(--muted)">Identificados pelo app</span>
+            <span style="font-size:11px;color:var(--muted)" id="ultimo-update"></span>
         </div>
         <div class="func-grid" id="func-grid">
             <div class="empty-state"><div class="ico">📱</div><p>Nenhuma venda registrada ainda hoje</p></div>
@@ -57,67 +59,85 @@ async function carregarFuncionarios() {
     const ranking = document.getElementById('func-ranking');
     const grid    = document.getElementById('func-grid');
 
-    let pedidos = [];
-    try { 
-        pedidos = await fetch('/api/pedidos').then(r => r.json()); 
-    } catch (e) {
-        console.error("Erro ao buscar pedidos:", e);
-    }
+    // Busca pedidos e vendedores ativos em paralelo
+    const [pedidos, ativos] = await Promise.all([
+        fetch('/api/pedidos').then(r => r.json()).catch(() => []),
+        fetch('/api/vendedores-ativos').then(r => r.json()).catch(() => [])
+    ]);
 
-    // Agrupa por vendedor_nome (capturado dinamicamente do app Android)
+    // Monta mapa de status online por nome
+    const statusOnline = {};
+    ativos.forEach(v => { statusOnline[v.vendedor_nome] = v.online; });
+
+    // Agrupa por vendedor_nome
     const vendedores = {};
     pedidos.filter(p => p.vendedor_nome).forEach(p => {
         const key = p.vendedor_nome;
-        
-        // Extrai e formata os primeiros 6 dígitos do ID único da LIO para exibição limpa
         const maquininhaId = p.lio_id ? p.lio_id.substring(0, 6).toUpperCase() : 'S/ID';
-
         if (!vendedores[key]) {
-            vendedores[key] = {
-                nome: p.vendedor_nome,
-                setor: p.setor || '—',
-                lioId: maquininhaId,
-                fat: 0, 
-                qtd: 0, 
-                pedidos: 0
-            };
+            vendedores[key] = { nome: p.vendedor_nome, setor: p.setor || '—', lioId: maquininhaId, fat: 0, qtd: 0, pedidos: 0 };
         }
         vendedores[key].fat     += p.total;
         vendedores[key].qtd     += p.quantidade;
         vendedores[key].pedidos += 1;
-        
-        if (p.setor) vendedores[key].setor = p.setor;
-        if (p.lio_id) vendedores[key].lioId = maquininhaId;
+        if (p.setor)   vendedores[key].setor  = p.setor;
+        if (p.lio_id)  vendedores[key].lioId  = maquininhaId;
+    });
+
+    // Adiciona vendedores ativos que ainda não venderam nada hoje
+    ativos.forEach(v => {
+        if (!vendedores[v.vendedor_nome]) {
+            vendedores[v.vendedor_nome] = {
+                nome: v.vendedor_nome, setor: v.setor, lioId: v.lio_id ? v.lio_id.substring(0,6).toUpperCase() : '—',
+                fat: 0, qtd: 0, pedidos: 0
+            };
+        }
     });
 
     const lista = Object.values(vendedores).sort((a, b) => b.fat - a.fat);
 
     if (!lista.length) {
-        ranking.innerHTML = '<div class="empty-state"><div class="ico">📊</div><p>Os vendedores aparecem aqui automaticamente<br>quando fazem vendas pelo app</p></div>';
+        ranking.innerHTML = '<div class="empty-state"><div class="ico">📊</div><p>Os vendedores aparecem aqui automaticamente quando fazem vendas pelo app</p></div>';
         grid.innerHTML    = '<div class="empty-state"><div class="ico">📱</div><p>Nenhuma venda registrada ainda hoje</p></div>';
         return;
     }
 
-    const medalhas = ['🥇', '🥈', '🥉'];
+    const medalhas    = ['🥇', '🥈', '🥉'];
     const medalClasses = ['medal-1', 'medal-2', 'medal-3'];
 
-    ranking.innerHTML = lista.map((v, i) => `
+    ranking.innerHTML = lista.map((v, i) => {
+        const online = statusOnline[v.nome];
+        const badge  = online !== undefined
+            ? `<span class="${online ? 'badge-online' : 'badge-offline'}">${online ? '● ONLINE' : '○ OFFLINE'}</span>`
+            : '';
+        return `
         <div class="func-rank">
             <div class="pos ${medalClasses[i] || ''}">${medalhas[i] || (i + 1)}</div>
             <div class="info">
-                <div class="nome">${v.nome} <span style="font-size:11px;color:var(--muted)">(${v.setor}) - ID: ${v.lioId}</span></div>
+                <div class="nome">${v.nome} ${badge} <span style="font-size:11px;color:var(--muted)">(${v.setor})</span></div>
                 <div class="sub">${v.qtd} itens &bull; ${v.pedidos} venda(s)</div>
             </div>
             <div class="fat">${fmt(v.fat)}</div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
 
-    grid.innerHTML = lista.map(v => `
+    grid.innerHTML = lista.map(v => {
+        const online = statusOnline[v.nome];
+        const badge  = online !== undefined
+            ? `<span class="${online ? 'badge-online' : 'badge-offline'}">${online ? '● ONLINE' : '○ OFFLINE'}</span>`
+            : '';
+        return `
         <div class="func-card">
-            <div class="func-nome">${v.nome}</div>
-            <div class="func-setor">📍 ${v.setor} <span style="font-size:10px;color:var(--muted);margin-left:4px;">[ID: ${v.lioId}]</span></div>
+            <div class="func-nome">${v.nome} ${badge}</div>
+            <div class="func-setor">📍 ${v.setor}</div>
             <div class="func-fat">${fmt(v.fat)}</div>
             <div class="func-sub">${v.qtd} itens &bull; ${v.pedidos} venda(s)</div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
+
+    const agora = new Date();
+    document.getElementById('ultimo-update').textContent =
+        `Atualizado ${agora.getHours().toString().padStart(2,'0')}:${agora.getMinutes().toString().padStart(2,'0')}:${agora.getSeconds().toString().padStart(2,'0')}`;
 }
 
 function confirmarFecharCaixa() {
@@ -135,10 +155,7 @@ function confirmarFecharCaixa() {
         });
 }
 
-// Inicializa a primeira carga na tela
 carregarFuncionarios();
-
-// Mecanismo de Sincronização Automática em Tempo Real (Loop invisível a cada 5 segundos)
 if (intervaloTempoReal) clearInterval(intervaloTempoReal);
 intervaloTempoReal = setInterval(carregarFuncionarios, 5000);
 </script>
