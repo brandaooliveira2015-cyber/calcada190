@@ -641,13 +641,14 @@ def dashboard_anual():
 # ============================================================
 
 CIELO_LIO_CAIXA = "02186204-0"
-CIELO_LIO_API   = "https://api.cielo.com.br/lio/v1"
+CIELO_LIO_API   = "https://api.cielo.com.br/order-management/v1"
 
 def cielo_headers():
     return {
         'Client-Id':    CIELO_CLIENT_ID,
         'Access-Token': CIELO_ACCESS_TOKEN,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept':       'application/json'
     }
 
 @app.route('/api/fechar-caixa', methods=['POST'])
