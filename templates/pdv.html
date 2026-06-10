@@ -81,6 +81,13 @@
 .lio-status.aviso { color:var(--laranja); }
 .lio-status.erro  { color:#ff5555; }
 
+/* ── MODAL AGUARDANDO PAGAMENTO ── */
+.aguardando-wrap { text-align:center; padding:10px 0; }
+.aguardando-spinner { width:48px; height:48px; border:4px solid var(--border); border-top-color:var(--laranja); border-radius:50%; animation:spin .8s linear infinite; margin:0 auto 14px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.aguardando-valor { font-family:'Barlow Condensed',sans-serif; font-size:38px; font-weight:700; color:var(--verde); margin:8px 0 4px; }
+.aguardando-forma { font-size:13px; color:var(--muted); margin-bottom:16px; }
+
 /* ── MODAL SUCESSO ── */
 .modal-sucesso { text-align:center; }
 .check-circle { width:68px; height:68px; background:rgba(0,230,118,.1); border:2px solid var(--verde); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:30px; margin:0 auto 18px; animation:popIn .4s cubic-bezier(.34,1.56,.64,1); }
@@ -228,6 +235,22 @@
 </div>
 
 <!-- ══════════════════════════════════════
+     MODAL AGUARDANDO PAGAMENTO (polling)
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-aguardando-overlay">
+    <div class="modal" style="max-width:360px">
+        <div class="aguardando-wrap">
+            <div class="aguardando-spinner"></div>
+            <div style="font-size:13px;color:var(--muted);margin-bottom:4px">Aguardando pagamento na maquininha</div>
+            <div class="aguardando-valor" id="agu-valor">R$ 0,00</div>
+            <div class="aguardando-forma" id="agu-forma">—</div>
+            <div class="lio-status" id="agu-status" style="margin-bottom:14px"></div>
+            <button class="btn" style="background:rgba(255,85,85,.12);border-color:#ff5555;color:#ff5555;width:100%;justify-content:center" onclick="cancelarAguardo()">✕ Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════
      MODAL TROCO (DINHEIRO)
 ══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-troco-overlay">
@@ -337,14 +360,15 @@
 // ══════════════════════════════════════════════════════
 // ESTADO GLOBAL
 // ══════════════════════════════════════════════════════
-let todosProdutos   = [];
-let carrinhoModal   = [];
-let formaPagModal   = 'credito';
-let categoriaAtual  = 'Todos';
-let _totalVendaAtual  = 0;
-let _snapshotAtual    = [];
-let _maqSelecionada   = null;  // { nome, numero_logico }
-let _dadosPagamentoAtual = {}; // guarda dados após venda registrada, para impressão
+let todosProdutos        = [];
+let carrinhoModal        = [];
+let formaPagModal        = 'credito';
+let categoriaAtual       = 'Todos';
+let _totalVendaAtual     = 0;
+let _snapshotAtual       = [];
+let _maqSelecionada      = null;
+let _dadosPagamentoAtual = {};
+let _pollingInterval     = null; // controla o polling de pagamento
 
 const CATEGORIAS_FIXAS = [
     'Todos','Águas','Cervejas','Cigarros','Copo Completo',
@@ -355,9 +379,8 @@ const CATEGORIAS_FIXAS = [
 
 // ── Maquininhas salvas no localStorage ──────────────
 function carregarMaquininhas() {
-    try {
-        return JSON.parse(localStorage.getItem('pdv_maquininhas') || '[]');
-    } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('pdv_maquininhas') || '[]'); }
+    catch { return []; }
 }
 function salvarMaquininhas(lista) {
     localStorage.setItem('pdv_maquininhas', JSON.stringify(lista));
@@ -380,14 +403,22 @@ function badgePag(f) {
     const m = { credito:'💳 Crédito', debito:'💳 Débito', dinheiro:'💵 Dinheiro', pix:'📱 Pix' };
     return `<span style="font-size:11px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:2px 8px;color:var(--muted)">${m[f]||f}</span>`;
 }
-function abrirModal(id) { document.getElementById(id).classList.add('open'); }
+function abrirModal(id)  { document.getElementById(id).classList.add('open'); }
 function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
 
-function setLioStatus(msg, cls = '') {
-    const el = document.getElementById('lio-status');
+function setAguStatus(msg, cls = '') {
+    const el = document.getElementById('agu-status');
     if (!el) return;
     el.textContent = msg;
     el.className   = 'lio-status' + (cls ? ' ' + cls : '');
+}
+
+function formaLabel(forma) {
+    if (forma.includes('pix'))      return 'PIX';
+    if (forma.includes('debito'))   return 'DÉBITO';
+    if (forma.includes('credito'))  return 'CRÉDITO';
+    if (forma.includes('dinheiro')) return 'DINHEIRO';
+    return forma.toUpperCase();
 }
 
 // ══════════════════════════════════════════════════════
@@ -396,10 +427,7 @@ function setLioStatus(msg, cls = '') {
 function renderizarMaquininhas() {
     const lista = maquininhaPadrao();
     const wrap  = document.getElementById('maq-lista');
-
-    // Seleciona a primeira por padrão
     if (!_maqSelecionada && lista.length > 0) _maqSelecionada = lista[0];
-
     wrap.innerHTML = lista.map((m, i) => `
         <div class="maq-btn${_maqSelecionada && _maqSelecionada.numero_logico === m.numero_logico ? ' selected' : ''}"
              onclick="selecionarMaquininha(${i})">
@@ -412,8 +440,7 @@ function renderizarMaquininhas() {
 }
 
 function selecionarMaquininha(idx) {
-    const lista = maquininhaPadrao();
-    _maqSelecionada = lista[idx];
+    _maqSelecionada = maquininhaPadrao()[idx];
     renderizarMaquininhas();
 }
 
@@ -468,7 +495,6 @@ async function abrirModalVenda() {
     carrinhoModal = []; formaPagModal = 'credito'; categoriaAtual = 'Todos';
     document.getElementById('m-mesa').value         = '';
     document.getElementById('m-busca-rapida').value = '';
-    setLioStatus('');
     document.querySelectorAll('#modal-venda-overlay .forma-btn')
         .forEach((b,i) => b.classList.toggle('selected', i===0));
     renderizarCarrinho();
@@ -570,8 +596,6 @@ function selForma(f, el) {
     formaPagModal = f;
     document.querySelectorAll('#modal-venda-overlay .forma-btn').forEach(b=>b.classList.remove('selected'));
     el.classList.add('selected');
-    // Esconde seletor de maquininha no dinheiro (mas vai usar pra imprimir)
-    // Mantém visível sempre — dinheiro também usa a maquininha como impressora
 }
 
 // ══════════════════════════════════════════════════════
@@ -579,21 +603,20 @@ function selForma(f, el) {
 // ══════════════════════════════════════════════════════
 function finalizarVenda() {
     if (!carrinhoModal.length) { alert('Adicione pelo menos um produto!'); return; }
-    if (!_maqSelecionada) { alert('Selecione uma maquininha!'); return; }
+    if (!_maqSelecionada)      { alert('Selecione uma maquininha!'); return; }
 
     _totalVendaAtual = carrinhoModal.reduce((s,i)=>s+i.preco*i.quantidade, 0);
     _snapshotAtual   = [...carrinhoModal];
 
     if (formaPagModal === 'dinheiro') {
-        // Abre modal de troco
-        document.getElementById('troco-total-val').textContent = fmt(_totalVendaAtual);
-        document.getElementById('troco-recebido').value        = '';
-        document.getElementById('troco-resultado').style.display = 'none';
+        document.getElementById('troco-total-val').textContent      = fmt(_totalVendaAtual);
+        document.getElementById('troco-recebido').value             = '';
+        document.getElementById('troco-resultado').style.display    = 'none';
         fecharModal('modal-venda-overlay');
         abrirModal('modal-troco-overlay');
         setTimeout(() => document.getElementById('troco-recebido').focus(), 200);
     } else {
-        // Crédito / Débito / Pix → registra + aciona maquininha
+        // Crédito / Débito / Pix → API REST Cielo
         fecharModal('modal-venda-overlay');
         processarVendaCartao(formaPagModal, _totalVendaAtual, _snapshotAtual);
     }
@@ -622,7 +645,8 @@ function confirmarDinheiro() {
 }
 
 // ══════════════════════════════════════════════════════
-// PROCESSAR VENDA — DINHEIRO (registra + só imprime fichas)
+// PROCESSAR VENDA — DINHEIRO
+// Registra no banco + usa maquininha APENAS como impressora
 // ══════════════════════════════════════════════════════
 async function processarVendaDinheiro(total, snapshot) {
     const mesa = document.getElementById('m-mesa').value || 'Caixa';
@@ -640,17 +664,18 @@ async function processarVendaDinheiro(total, snapshot) {
         });
     }
 
-    // 2. Manda imprimir fichas via Deeplink (sem cobrar)
+    // 2. Imprime fichas via deeplink (só impressão, sem cobrar)
     await imprimirFichasDeeplink(snapshot, mesa, 'DINHEIRO', total);
 
-    // 3. Mostra sucesso
+    // 3. Sucesso
     mostrarSucesso(snapshot, mesa, 'dinheiro', total);
     carrinhoModal = [];
     carregarVendasPDV();
 }
 
 // ══════════════════════════════════════════════════════
-// PROCESSAR VENDA — CARTÃO / PIX (aciona LIO + imprime)
+// PROCESSAR VENDA — CARTÃO / PIX
+// Registra no banco + chama API REST Cielo + polling
 // ══════════════════════════════════════════════════════
 async function processarVendaCartao(forma, total, snapshot) {
     const mesa = document.getElementById('m-mesa').value || 'Caixa';
@@ -668,75 +693,107 @@ async function processarVendaCartao(forma, total, snapshot) {
         });
     }
 
-    // 2. Aciona a LIO para cobrança
-    setLioStatus('📡 Acionando maquininha...', '');
+    // 2. Mostra modal de aguardo
+    document.getElementById('agu-valor').textContent = fmt(total);
+    document.getElementById('agu-forma').textContent = `${formaLabel(forma)} — ${_maqSelecionada.nome}`;
+    setAguStatus('📡 Acionando maquininha...', '');
+    abrirModal('modal-aguardando-overlay');
 
+    // 3. Chama a API REST para acionar a LIO
+    let order_id = null;
     try {
         const resp = await fetch('/api/lio/cobrar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                valor: total,
+                valor:         total,
                 forma,
                 numero_logico: _maqSelecionada.numero_logico,
-                descricao: `${mesa} — ${snapshot.map(i=>i.nome).join(', ')}`
+                descricao:     `${mesa} — ${snapshot.map(i=>i.nome).join(', ')}`
             })
         });
         const data = await resp.json();
 
-        if (data.aviso) {
-            setLioStatus('⚠️ ' + data.aviso, 'aviso');
-            await new Promise(r=>setTimeout(r,1200));
-        } else if (data.deeplink) {
-            // Abre deeplink para a LIO cobrar
-            setLioStatus('✅ Maquininha ativada! Aguardando pagamento...', 'ok');
-            window.location.href = data.deeplink;
-            // Após retorno (CALLBACK), o fluxo continua via _imprimirAposCobranca
-            // Guarda dados para uso após retorno
-            _dadosPagamentoAtual = { snapshot, mesa, forma, total };
-            sessionStorage.setItem('lio_pending', JSON.stringify(_dadosPagamentoAtual));
-            return; // Sai aqui — continuação é no retorno do deeplink
-        } else {
-            setLioStatus('✅ Maquininha ativada!', 'ok');
+        if (data.erro) {
+            setAguStatus('❌ ' + data.erro, 'erro');
+            return; // deixa modal aberto mostrando o erro
         }
+
+        order_id = data.order_id;
+        setAguStatus('✅ Maquininha ativada! Aguardando cliente pagar...', 'ok');
+
     } catch (e) {
-        setLioStatus('⚠️ Falha ao conectar com a maquininha', 'aviso');
-        await new Promise(r=>setTimeout(r,900));
+        setAguStatus('⚠️ Falha ao conectar com a maquininha. Tente novamente.', 'aviso');
+        return;
     }
 
-    // 3. Se não foi via deeplink, segue fluxo de impressão direto
-    await iniciarFluxoImpressaoCartao(snapshot, mesa, forma, total);
+    // 4. Polling — verifica aprovação a cada 3s (máx 2 minutos = 40 tentativas)
+    _dadosPagamentoAtual = { snapshot, mesa, forma, total };
+    aguardarPagamentoLio(order_id);
 }
 
 // ══════════════════════════════════════════════════════
-// RETORNO DO DEEPLINK LIO (chamado quando a URL tem ?lio_status=)
+// POLLING — AGUARDA APROVAÇÃO DA LIO
 // ══════════════════════════════════════════════════════
-async function verificarRetornoLio() {
-    const params = new URLSearchParams(window.location.search);
-    const status = params.get('lio_status');
-    if (!status) return;
+function aguardarPagamentoLio(order_id) {
+    const MAX = 40;
+    let tentativas = 0;
 
-    // Limpa query string da URL
-    history.replaceState({}, '', window.location.pathname);
+    _pollingInterval = setInterval(async () => {
+        tentativas++;
 
-    const pending = JSON.parse(sessionStorage.getItem('lio_pending') || 'null');
-    sessionStorage.removeItem('lio_pending');
+        try {
+            const r = await fetch(`/api/lio/status/${order_id}`);
+            const d = await r.json();
 
-    if (status === 'success' && pending) {
-        const { snapshot, mesa, forma, total } = pending;
-        await iniciarFluxoImpressaoCartao(snapshot, mesa, forma, total);
-    } else if (status === 'cancel' || status === 'error') {
-        alert('❌ Pagamento cancelado ou falhou na maquininha. Venda já registrada no sistema.');
+            if (d.aprovado) {
+                pararPolling();
+                setAguStatus('✅ Pagamento aprovado!', 'ok');
+                await new Promise(res => setTimeout(res, 800));
+                fecharModal('modal-aguardando-overlay');
+
+                const { snapshot, mesa, forma, total } = _dadosPagamentoAtual;
+                await iniciarFluxoImpressaoCartao(snapshot, mesa, forma, total);
+                carrinhoModal = [];
+                carregarVendasPDV();
+
+            } else if (d.cancelado) {
+                pararPolling();
+                setAguStatus('❌ Pagamento cancelado na maquininha.', 'erro');
+
+            } else if (tentativas >= MAX) {
+                pararPolling();
+                setAguStatus('⏱ Tempo esgotado. Verifique a maquininha.', 'aviso');
+            }
+            // status ENTERED → continua aguardando
+
+        } catch (e) {
+            // erro de rede pontual — não cancela, tenta de novo
+        }
+
+    }, 3000);
+}
+
+function pararPolling() {
+    if (_pollingInterval) {
+        clearInterval(_pollingInterval);
+        _pollingInterval = null;
     }
 }
 
+function cancelarAguardo() {
+    pararPolling();
+    fecharModal('modal-aguardando-overlay');
+    alert('⚠️ Cobrança cancelada. A venda já foi registrada no sistema.');
+    carregarVendasPDV();
+}
+
 // ══════════════════════════════════════════════════════
-// FLUXO DE IMPRESSÃO — CARTÃO/PIX
+// FLUXO DE IMPRESSÃO — CARTÃO/PIX (após aprovação)
 // ══════════════════════════════════════════════════════
 async function iniciarFluxoImpressaoCartao(snapshot, mesa, forma, total) {
     // Imprime via loja primeiro
     await imprimirViaLojaDeeplink(snapshot, mesa, forma, total);
-
     // Pergunta se quer via cliente
     _dadosPagamentoAtual = { snapshot, mesa, forma, total };
     abrirModal('modal-via-overlay');
@@ -760,19 +817,11 @@ function responderViaCliente(sim) {
 }
 
 // ══════════════════════════════════════════════════════
-// IMPRESSÃO VIA DEEPLINK LIO
+// IMPRESSÃO VIA DEEPLINK LIO (só impressora)
 // ══════════════════════════════════════════════════════
 function centralizar(texto, largura = 32) {
     const spaces = Math.max(0, Math.floor((largura - texto.length) / 2));
     return ' '.repeat(spaces) + texto;
-}
-
-function formaLabel(forma) {
-    if (forma.includes('pix'))     return 'PIX';
-    if (forma.includes('debito'))  return 'DEBITO';
-    if (forma.includes('credito')) return 'CREDITO';
-    if (forma.includes('dinheiro')) return 'DINHEIRO';
-    return forma.toUpperCase();
 }
 
 function dataHoraAgora() {
@@ -813,7 +862,6 @@ function montarTextoFichas(snapshot, mesa, forma, total, incluirViaCliente = fal
     const dt = dataHoraAgora();
     const c  = centralizar;
 
-    // Expande itens em fichas individuais
     const fichas = [];
     for (const item of snapshot) {
         for (let i = 1; i <= item.quantidade; i++) {
@@ -847,7 +895,6 @@ function montarTextoFichas(snapshot, mesa, forma, total, incluirViaCliente = fal
         texto += c('Obrigado pela preferencia!') + '\n';
     }
 
-    // Fichas individuais
     for (let idx = 0; idx < fichas.length; idx++) {
         const f = fichas[idx];
         texto += '\n';
@@ -889,7 +936,6 @@ function enviarDeeplinkImpressao(texto) {
             const base64 = btoa(unescape(encodeURIComponent(payload)));
             const uri    = `lio://print?request=${base64}&urlCallback=calcada190://response`;
             window.location.href = uri;
-            // Aguarda 1.5s para dar tempo da LIO processar antes do próximo passo
             setTimeout(resolve, 1500);
         } catch (e) {
             console.warn('Deeplink impressão falhou:', e);
@@ -899,18 +945,15 @@ function enviarDeeplinkImpressao(texto) {
 }
 
 async function imprimirViaLojaDeeplink(snapshot, mesa, forma, total) {
-    const texto = montarTextoViaLoja(snapshot, mesa, forma, total);
-    await enviarDeeplinkImpressao(texto);
+    await enviarDeeplinkImpressao(montarTextoViaLoja(snapshot, mesa, forma, total));
 }
 
 async function imprimirViaClienteEFichasDeeplink(snapshot, mesa, forma, total) {
-    const texto = montarTextoFichas(snapshot, mesa, forma, total, true);
-    await enviarDeeplinkImpressao(texto);
+    await enviarDeeplinkImpressao(montarTextoFichas(snapshot, mesa, forma, total, true));
 }
 
 async function imprimirFichasDeeplink(snapshot, mesa, forma, total) {
-    const texto = montarTextoFichas(snapshot, mesa, forma, total, false);
-    await enviarDeeplinkImpressao(texto);
+    await enviarDeeplinkImpressao(montarTextoFichas(snapshot, mesa, forma, total, false));
 }
 
 // ══════════════════════════════════════════════════════
@@ -939,8 +982,8 @@ async function abrirFecharCaixa() {
     document.getElementById('fech-lucro').textContent = fmt(dados.lucro_bruto||0);
     document.getElementById('fech-qtd').textContent   = (dados.total_pedidos||0) + ' vendas';
 
-    const formas = dados.por_forma_pagamento || {};
-    const fmtLabel = { credito:'💳 Crédito', debito:'💳 Débito', dinheiro:'💵 Dinheiro', pix:'📱 Pix' };
+    const formas    = dados.por_forma_pagamento || {};
+    const fmtLabel  = { credito:'💳 Crédito', debito:'💳 Débito', dinheiro:'💵 Dinheiro', pix:'📱 Pix' };
     document.getElementById('fech-formas').innerHTML = Object.entries(formas).map(([f,v])=>`
         <div class="forma-pill">
             <div class="label">${fmtLabel[f]||f}</div>
@@ -950,7 +993,7 @@ async function abrirFecharCaixa() {
     const lucro = dados.lucro_liquido || 0;
     const res   = document.getElementById('fech-resultado');
     res.className = 'resultado-caixa ' + (lucro>=0?'verde':'vermelho');
-    document.getElementById('fech-emoji').textContent        = lucro>=0 ? '🟢' : '🔴';
+    document.getElementById('fech-emoji').textContent         = lucro>=0 ? '🟢' : '🔴';
     document.getElementById('fech-resultado-val').textContent = fmt(Math.abs(lucro));
     document.getElementById('fech-resultado-val').style.color = lucro>=0 ? 'var(--verde)' : '#ff5555';
     document.getElementById('fech-msg').textContent = lucro>=0
@@ -973,6 +1016,5 @@ async function confirmarFecharCaixa() {
 // ══════════════════════════════════════════════════════
 carregarVendasPDV();
 setInterval(carregarVendasPDV, 30000);
-verificarRetornoLio(); // verifica se voltou de um deeplink de pagamento
 </script>
 {% endblock %}

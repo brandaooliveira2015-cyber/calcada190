@@ -640,8 +640,15 @@ def dashboard_anual():
 # FECHAR CAIXA / CIELO / WEBHOOK
 # ============================================================
 
-# Maquininha do caixa fixo
 CIELO_LIO_CAIXA = "02186204-0"
+CIELO_LIO_API   = "https://api.cielo.com.br/lio/v1"
+
+def cielo_headers():
+    return {
+        'Client-Id':    CIELO_CLIENT_ID,
+        'Access-Token': CIELO_ACCESS_TOKEN,
+        'Content-Type': 'application/json'
+    }
 
 @app.route('/api/fechar-caixa', methods=['POST'])
 @login_required
@@ -653,10 +660,11 @@ def fechar_caixa():
     db.session.commit()
     return jsonify({'ok': True})
 
+
 @app.route('/api/lio/cobrar', methods=['POST'])
 @login_required
 def lio_cobrar():
-    import json as _json, base64 as _base64, time as _time, urllib.parse as _parse
+    import time as _time
 
     data          = request.json or {}
     valor         = float(data.get('valor', 0))
@@ -667,41 +675,85 @@ def lio_cobrar():
     valor_centavos = int(round(valor * 100))
 
     tipo_map = {
-        'credito': 'CREDITO_AVISTA',
-        'debito':  'DEBITO_AVISTA',
+        'credito': 'CREDIT',
+        'debito':  'DEBIT',
         'pix':     'PIX',
     }
-    payment_code = tipo_map.get(forma, 'CREDITO_AVISTA')
+    payment_type = tipo_map.get(forma, 'CREDIT')
 
-    payload = {
-        'accessToken':  CIELO_ACCESS_TOKEN,
-        'clientID':     CIELO_CLIENT_ID,
-        'reference':    descricao[:30],
-        'installments': 0,
+    # 1. Cria o pedido na Cielo
+    order_payload = {
+        'number':    f'PDV{int(_time.time())}',
+        'reference': descricao[:40],
         'items': [{
-            'name':          descricao[:40],
-            'quantity':      1,
-            'unitOfMeasure': 'unidade',
-            'unitPrice':     valor_centavos,
-            'sku':           f'PDV{int(_time.time())}'
-        }],
-        'paymentCode': payment_code,
-        'value':       str(valor_centavos),
+            'sku':             f'PDV{int(_time.time())}',
+            'name':            descricao[:40],
+            'unit_price':      valor_centavos,
+            'quantity':        1,
+            'unit_of_measure': 'EACH'
+        }]
     }
 
-    payload_b64 = _base64.b64encode(
-        _json.dumps(payload).encode('utf-8')
-    ).decode('utf-8')
+    try:
+        r1 = requests.post(
+            f'{CIELO_LIO_API}/orders',
+            json=order_payload,
+            headers=cielo_headers(),
+            timeout=10
+        )
+        r1.raise_for_status()
+        order_id = r1.json().get('id')
+        if not order_id:
+            return jsonify({'erro': 'Cielo não retornou order_id'}), 500
+    except Exception as e:
+        return jsonify({'erro': f'Falha ao criar pedido Cielo: {str(e)}'}), 500
 
-    callback_url = _parse.quote('calcada190://response?lio_status=success', safe='')
-    deeplink     = f'lio://payment?request={payload_b64}&urlCallback={callback_url}'
+    # 2. Lança a cobrança na LIO pelo número lógico
+    tx_payload = {
+        'terminal_number': numero_logico,
+        'payment_product': payment_type,
+        'amount':          valor_centavos,
+        'installments':    1
+    }
+
+    try:
+        r2 = requests.post(
+            f'{CIELO_LIO_API}/orders/{order_id}/transactions',
+            json=tx_payload,
+            headers=cielo_headers(),
+            timeout=10
+        )
+        r2.raise_for_status()
+    except Exception as e:
+        return jsonify({'erro': f'Falha ao acionar LIO: {str(e)}'}), 500
 
     return jsonify({
-        'ok':            True,
-        'deeplink':      deeplink,
-        'numero_logico': numero_logico,
-        'aviso':         None
+        'ok':       True,
+        'order_id': order_id,
+        'aviso':    None
     })
+
+
+@app.route('/api/lio/status/<order_id>', methods=['GET'])
+@login_required
+def lio_status(order_id):
+    try:
+        r = requests.get(
+            f'{CIELO_LIO_API}/orders/{order_id}',
+            headers=cielo_headers(),
+            timeout=8
+        )
+        r.raise_for_status()
+        order  = r.json()
+        status = order.get('status', '')
+        return jsonify({
+            'status':    status,
+            'aprovado':  status == 'PAID',
+            'cancelado': status in ('CANCELED', 'CANCELLED')
+        })
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
 
 @app.route('/webhook/lio', methods=['POST'])
 def webhook_lio():
