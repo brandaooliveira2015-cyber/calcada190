@@ -641,7 +641,7 @@ def dashboard_anual():
 # ============================================================
 
 CIELO_LIO_CAIXA = "02186204-0"
-CIELO_LIO_API   = "https://api.cielo.com.br/order-management/v1"
+CIELO_LIO_API = "https://api-hml-mtls.cielo.com.br/order-management/v1"
 
 def cielo_headers():
     return {
