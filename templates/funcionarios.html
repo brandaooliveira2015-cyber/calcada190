@@ -3,7 +3,6 @@
 
 {% block extra_styles %}
 <style>
-    /* ── Grid de cards ── */
     .func-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
     .func-card { background: var(--bg4); border-radius: 10px; padding: 16px; border: 1px solid var(--border); }
     .func-card .func-nome { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
@@ -11,7 +10,6 @@
     .func-card .func-fat { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700; color: var(--verde); }
     .func-card .func-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
-    /* ── Ranking ── */
     .func-rank { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
     .func-rank:last-child { border-bottom: none; }
     .func-rank .pos { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 900; color: var(--laranja); min-width: 28px; }
@@ -23,85 +21,25 @@
     .medal-2 { color: #C0C0C0; }
     .medal-3 { color: #CD7F32; }
 
-    /* ── Badges online/offline ── */
     .badge-online  { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; background:rgba(0,230,118,.15); color:#00e676; margin-left:6px; }
     .badge-offline { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; background:rgba(255,61,61,.12); color:#ff3d3d; margin-left:6px; }
     .badge-pista   { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; background:rgba(213,130,10,.15); color:#D4820A; margin-left:6px; }
 
-    /* ── Comissões por produtividade ── */
-    .comissao-card {
-        background: var(--bg4);
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        overflow: hidden;
-        margin-bottom: 10px;
-    }
-    .comissao-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 14px 16px 10px;
-        border-bottom: 1px solid var(--border);
-    }
-    .comissao-header .com-nome {
-        font-weight: 700;
-        font-size: 14px;
-    }
-    .comissao-header .com-total-bruto {
-        font-family: 'Barlow Condensed', sans-serif;
-        font-size: 20px;
-        font-weight: 700;
-        color: var(--verde);
-    }
-    .comissao-body {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0;
-    }
-    .com-bloco {
-        padding: 12px 16px;
-        border-right: 1px solid var(--border);
-    }
+    .comissao-card { background: var(--bg4); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 10px; }
+    .comissao-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
+    .comissao-header .com-nome { font-weight: 700; font-size: 14px; }
+    .comissao-header .com-total-bruto { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; color: var(--verde); }
+    .comissao-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+    .com-bloco { padding: 12px 16px; border-right: 1px solid var(--border); }
     .com-bloco:last-child { border-right: none; }
-    .com-bloco .com-label {
-        font-size: 10px;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: .5px;
-        margin-bottom: 4px;
-    }
-    .com-bloco .com-valor {
-        font-family: 'Barlow Condensed', sans-serif;
-        font-size: 20px;
-        font-weight: 700;
-    }
-    .com-valor-real    { color: var(--texto); }
+    .com-bloco .com-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+    .com-bloco .com-valor { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; }
+    .com-valor-real     { color: var(--texto); }
     .com-valor-comissao { color: #D4820A; }
-    .com-bloco .com-sub {
-        font-size: 10px;
-        color: var(--muted);
-        margin-top: 2px;
-    }
-    .comissao-barra {
-        height: 4px;
-        background: var(--border);
-        position: relative;
-    }
-    .comissao-barra-fill {
-        height: 100%;
-        background: linear-gradient(to right, var(--verde), #D4820A);
-        border-radius: 2px;
-    }
-    .com-pct-tag {
-        display: inline-block;
-        font-size: 10px;
-        font-weight: 700;
-        background: rgba(213,130,10,.15);
-        color: #D4820A;
-        padding: 1px 7px;
-        border-radius: 20px;
-        margin-left: 6px;
-    }
+    .com-bloco .com-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .comissao-barra { height: 4px; background: var(--border); position: relative; }
+    .comissao-barra-fill { height: 100%; background: linear-gradient(to right, var(--verde), #D4820A); border-radius: 2px; }
+    .com-pct-tag { display: inline-block; font-size: 10px; font-weight: 700; background: rgba(213,130,10,.15); color: #D4820A; padding: 1px 7px; border-radius: 20px; margin-left: 6px; }
     .section-comissoes { margin-top: 16px; }
 </style>
 {% endblock %}
@@ -114,7 +52,6 @@
     </div>
 </div>
 
-<!-- Linha 1: Ranking + Vendedores Ativos -->
 <div class="charts-row">
     <div class="section">
         <div class="section-header"><h2>🏆 Ranking de Vendas — Hoje</h2></div>
@@ -133,11 +70,10 @@
     </div>
 </div>
 
-<!-- Linha 2: Comissões por Produtividade (apenas vendedores pista) -->
 <div class="section section-comissoes">
     <div class="section-header">
         <h2>🟠 Comissões por Produtividade — Pista</h2>
-        <span style="font-size:11px;color:var(--muted)">3% sobre vendas realizadas via maquininha pista</span>
+        <span style="font-size:11px;color:var(--muted)">3% sobre o valor real dos produtos vendidos</span>
     </div>
     <div id="func-comissoes">
         <div class="empty-state"><div class="ico">💰</div><p>Nenhum vendedor pista com vendas hoje</p></div>
@@ -147,7 +83,9 @@
 
 {% block extra_scripts %}
 <script>
-const MULTIPLICADOR_PISTA = 1.03;
+// Taxa de comissão dos vendedores pista
+const TAXA_COMISSAO = 0.03; // 3%
+
 let intervaloTempoReal = null;
 
 function fmt(v) {
@@ -155,21 +93,18 @@ function fmt(v) {
 }
 
 async function carregarFuncionarios() {
-    const ranking    = document.getElementById('func-ranking');
-    const grid       = document.getElementById('func-grid');
-    const comissoes  = document.getElementById('func-comissoes');
+    const ranking   = document.getElementById('func-ranking');
+    const grid      = document.getElementById('func-grid');
+    const comissoes = document.getElementById('func-comissoes');
 
-    // Busca pedidos e vendedores ativos em paralelo
     const [pedidos, ativos] = await Promise.all([
         fetch('/api/pedidos').then(r => r.json()).catch(() => []),
         fetch('/api/vendedores-ativos').then(r => r.json()).catch(() => [])
     ]);
 
-    // Mapa de status online por nome
     const statusOnline = {};
     ativos.forEach(v => { statusOnline[v.vendedor_nome] = v.online; });
 
-    // Mapa de setor por nome (para saber quem é pista)
     const setorPorNome = {};
     ativos.forEach(v => { setorPorNome[v.vendedor_nome] = v.setor; });
 
@@ -177,12 +112,11 @@ async function carregarFuncionarios() {
     const vendedores = {};
     pedidos.filter(p => p.vendedor_nome).forEach(p => {
         const key = p.vendedor_nome;
-        const maquininhaId = p.lio_id ? p.lio_id.substring(0, 6).toUpperCase() : 'S/ID';
         if (!vendedores[key]) {
             vendedores[key] = {
-                nome: p.vendedor_nome,
-                setor: p.setor || setorPorNome[key] || '—',
-                lioId: maquininhaId,
+                nome:    p.vendedor_nome,
+                setor:   p.setor || setorPorNome[key] || '—',
+                lioId:   p.lio_id ? p.lio_id.substring(0,6).toUpperCase() : 'S/ID',
                 fat: 0, qtd: 0, pedidos: 0
             };
         }
@@ -190,16 +124,16 @@ async function carregarFuncionarios() {
         vendedores[key].qtd     += p.quantidade;
         vendedores[key].pedidos += 1;
         if (p.setor)  vendedores[key].setor = p.setor;
-        if (p.lio_id) vendedores[key].lioId = maquininhaId;
+        if (p.lio_id) vendedores[key].lioId = p.lio_id.substring(0,6).toUpperCase();
     });
 
-    // Adiciona vendedores ativos que ainda não venderam nada
+    // Adiciona ativos que ainda não venderam
     ativos.forEach(v => {
         if (!vendedores[v.vendedor_nome]) {
             vendedores[v.vendedor_nome] = {
-                nome: v.vendedor_nome,
+                nome:  v.vendedor_nome,
                 setor: v.setor,
-                lioId: v.lio_id ? v.lio_id.substring(0, 6).toUpperCase() : '—',
+                lioId: v.lio_id ? v.lio_id.substring(0,6).toUpperCase() : '—',
                 fat: 0, qtd: 0, pedidos: 0
             };
         }
@@ -207,10 +141,9 @@ async function carregarFuncionarios() {
 
     const lista = Object.values(vendedores).sort((a, b) => b.fat - a.fat);
 
-    // ── Empty state ──
     if (!lista.length) {
-        ranking.innerHTML  = '<div class="empty-state"><div class="ico">📊</div><p>Os vendedores aparecem aqui automaticamente quando fazem vendas pelo app</p></div>';
-        grid.innerHTML     = '<div class="empty-state"><div class="ico">📱</div><p>Nenhuma venda registrada ainda hoje</p></div>';
+        ranking.innerHTML   = '<div class="empty-state"><div class="ico">📊</div><p>Os vendedores aparecem aqui automaticamente quando fazem vendas pelo app</p></div>';
+        grid.innerHTML      = '<div class="empty-state"><div class="ico">📱</div><p>Nenhuma venda registrada ainda hoje</p></div>';
         comissoes.innerHTML = '<div class="empty-state"><div class="ico">💰</div><p>Nenhum vendedor pista com vendas hoje</p></div>';
         return;
     }
@@ -226,7 +159,7 @@ async function carregarFuncionarios() {
             : '';
         return `
         <div class="func-rank">
-            <div class="pos ${medalClasses[i] || ''}">${medalhas[i] || (i + 1)}</div>
+            <div class="pos ${medalClasses[i] || ''}">${medalhas[i] || (i+1)}</div>
             <div class="info">
                 <div class="nome">${v.nome} ${badge} <span style="font-size:11px;color:var(--muted)">(${v.setor})</span></div>
                 <div class="sub">${v.qtd} itens &bull; ${v.pedidos} venda(s)</div>
@@ -235,13 +168,14 @@ async function carregarFuncionarios() {
         </div>`;
     }).join('');
 
-    // ── VENDEDORES ATIVOS ──
+    // ── GRID VENDEDORES ATIVOS ──
     grid.innerHTML = lista.map(v => {
-        const online = statusOnline[v.nome];
-        const badge  = online !== undefined
+        const online     = statusOnline[v.nome];
+        const badge      = online !== undefined
             ? `<span class="${online ? 'badge-online' : 'badge-offline'}">${online ? '● ONLINE' : '○ OFFLINE'}</span>`
             : '';
-        const pistaBadge = isPistaVendedor(v.setor) ? `<span class="badge-pista">🟠 PISTA</span>` : '';
+        const pistaBadge = isPistaVendedor(v.setor)
+            ? `<span class="badge-pista">🟠 PISTA</span>` : '';
         return `
         <div class="func-card">
             <div class="func-nome">${v.nome} ${badge} ${pistaBadge}</div>
@@ -251,18 +185,21 @@ async function carregarFuncionarios() {
         </div>`;
     }).join('');
 
-    // ── COMISSÕES POR PRODUTIVIDADE (apenas pista) ──
+    // ── COMISSÕES (só pista com vendas) ──
     const vendedoresPista = lista.filter(v => isPistaVendedor(v.setor) && v.fat > 0);
 
     if (!vendedoresPista.length) {
         comissoes.innerHTML = '<div class="empty-state"><div class="ico">💰</div><p>Nenhum vendedor pista com vendas hoje</p></div>';
     } else {
         comissoes.innerHTML = vendedoresPista.map(v => {
-            // fat = total COM os 3% embutidos (app multiplica por 1.03)
-            const fatBruto     = v.fat;                              // ex: R$ 2.060,00
-            const fatReal      = fatBruto / MULTIPLICADOR_PISTA;     // valor original dos produtos
-            const comissaoVal  = fatBruto - fatReal;                 // os 3% que são dele
-            const pctBarra     = Math.min((comissaoVal / fatBruto) * 100 * 10, 100); // visual da barra
+            // ✅ LÓGICA CORRETA:
+            // fat = valor real dos produtos (ex: R$ 30,00)
+            // comissão = fat × 3% (ex: R$ 0,90)
+            // total a receber = fat + comissão (ex: R$ 30,90)
+            const fatReal     = v.fat;                        // R$ 30,00 — valor real dos produtos
+            const comissaoVal = fatReal * TAXA_COMISSAO;      // R$ 0,90  — 3% em cima
+            const totalComiss = fatReal + comissaoVal;        // R$ 30,90 — o que o vendedor cobrou no total
+            const pctBarra    = Math.min(TAXA_COMISSAO * 100 * 10, 100); // barra visual (30% da largura para 3%)
 
             return `
             <div class="comissao-card">
@@ -273,8 +210,8 @@ async function carregarFuncionarios() {
                         <span class="com-pct-tag">+3%</span>
                     </div>
                     <div>
-                        <span style="font-size:10px;color:var(--muted);margin-right:6px">total cobrado</span>
-                        <span class="com-total-bruto">${fmt(fatBruto)}</span>
+                        <span style="font-size:10px;color:var(--muted);margin-right:6px">total com comissão</span>
+                        <span class="com-total-bruto">${fmt(totalComiss)}</span>
                     </div>
                 </div>
                 <div class="comissao-barra">
@@ -296,7 +233,6 @@ async function carregarFuncionarios() {
         }).join('');
     }
 
-    // Hora da última atualização
     const agora = new Date();
     document.getElementById('ultimo-update').textContent =
         `Atualizado ${agora.getHours().toString().padStart(2,'0')}:${agora.getMinutes().toString().padStart(2,'0')}:${agora.getSeconds().toString().padStart(2,'0')}`;

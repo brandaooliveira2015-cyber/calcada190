@@ -640,6 +640,9 @@ def dashboard_anual():
 # FECHAR CAIXA / CIELO / WEBHOOK
 # ============================================================
 
+# Maquininha do caixa fixo
+CIELO_LIO_CAIXA = "02186204-0"
+
 @app.route('/api/fechar-caixa', methods=['POST'])
 @login_required
 def fechar_caixa():
@@ -653,39 +656,52 @@ def fechar_caixa():
 @app.route('/api/lio/cobrar', methods=['POST'])
 @login_required
 def lio_cobrar():
-    data      = request.json
-    valor     = data.get('valor', 0)
-    forma     = data.get('forma', 'credito')
-    descricao = data.get('descricao', 'Venda Calcada 190')
-    if not CIELO_CLIENT_ID or not CIELO_ACCESS_TOKEN or not CIELO_MERCHANT_ID:
-        return jsonify({'aviso': 'Credenciais Cielo não configuradas.'})
-    tipo_map       = {'credito': 'CREDIT', 'debito': 'DEBIT', 'pix': 'PIX'}
-    payment_type   = tipo_map.get(forma, 'CREDIT')
+    import json as _json, base64 as _base64, time as _time, urllib.parse as _parse
+
+    data          = request.json or {}
+    valor         = float(data.get('valor', 0))
+    forma         = data.get('forma', 'credito')
+    descricao     = data.get('descricao', 'Venda Calcada 190')
+    numero_logico = data.get('numero_logico', CIELO_LIO_CAIXA)
+
     valor_centavos = int(round(valor * 100))
-    headers = {
-        'Content-Type': 'application/json',
-        'Client-Id':    CIELO_CLIENT_ID,
-        'Access-Token': CIELO_ACCESS_TOKEN
+
+    tipo_map = {
+        'credito': 'CREDITO_AVISTA',
+        'debito':  'DEBITO_AVISTA',
+        'pix':     'PIX',
     }
+    payment_code = tipo_map.get(forma, 'CREDITO_AVISTA')
+
     payload = {
-        'MerchantOrderId': f'calcada-{datetime.utcnow().strftime("%Y%m%d%H%M%S")}',
-        'Payment': {
-            'Amount':      valor_centavos,
-            'Installments': 1,
-            'PaymentType': payment_type,
-            'Description': descricao
-        }
+        'accessToken':  CIELO_ACCESS_TOKEN,
+        'clientID':     CIELO_CLIENT_ID,
+        'reference':    descricao[:30],
+        'installments': 0,
+        'items': [{
+            'name':          descricao[:40],
+            'quantity':      1,
+            'unitOfMeasure': 'unidade',
+            'unitPrice':     valor_centavos,
+            'sku':           f'PDV{int(_time.time())}'
+        }],
+        'paymentCode': payment_code,
+        'value':       str(valor_centavos),
     }
-    try:
-        resp = requests.post(
-            f'https://api.cielo.com.br/order-management/v1/merchants/{CIELO_MERCHANT_ID}/orders',
-            json=payload, headers=headers, timeout=8
-        )
-        if resp.status_code in (200, 201):
-            return jsonify({'ok': True, 'cielo': resp.json()})
-        return jsonify({'aviso': f'Cielo retornou {resp.status_code}.'})
-    except Exception as e:
-        return jsonify({'aviso': f'Falha Cielo: {str(e)}'})
+
+    payload_b64 = _base64.b64encode(
+        _json.dumps(payload).encode('utf-8')
+    ).decode('utf-8')
+
+    callback_url = _parse.quote('calcada190://response?lio_status=success', safe='')
+    deeplink     = f'lio://payment?request={payload_b64}&urlCallback={callback_url}'
+
+    return jsonify({
+        'ok':            True,
+        'deeplink':      deeplink,
+        'numero_logico': numero_logico,
+        'aviso':         None
+    })
 
 @app.route('/webhook/lio', methods=['POST'])
 def webhook_lio():
@@ -1122,6 +1138,32 @@ def listar_vendedores_ativos():
             v['online'] = False
     return jsonify(list(vendedores_ativos.values()))
 
+@app.route('/app/vendas', methods=['GET'])
+@app_auth_required
+def app_listar_vendas():
+    limit  = request.args.get('limit', 20, type=int)
+    periodo = request.args.get('periodo', 'hoje')  # hoje | semana | mes | tudo
+
+    if periodo == 'tudo':
+        pedidos = Pedido.query.order_by(Pedido.data.desc()).limit(limit).all()
+    else:
+        inicio, fim = get_periodo_datas(periodo)
+        pedidos = Pedido.query.filter(
+            Pedido.data >= inicio, Pedido.data <= fim
+        ).order_by(Pedido.data.desc()).limit(limit).all()
+
+    return jsonify([{
+        'id':              p.id,
+        'mesa':            p.mesa or 'Pista',
+        'produto_nome':    p.produto_nome,
+        'produto_preco':   p.produto_preco,
+        'quantidade':      p.quantidade,
+        'total':           p.total,
+        'forma_pagamento': p.forma_pagamento,
+        'vendedor_nome':   p.vendedor_nome or '',
+        'setor':           p.setor or '',
+        'data':            hora_local(p.data),
+    } for p in pedidos])
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
