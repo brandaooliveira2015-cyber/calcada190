@@ -7,6 +7,25 @@
     .estoque-ok   { background: rgba(0,230,118,0.12); color: var(--verde); }
     .estoque-min  { background: rgba(255,61,61,0.12); color: var(--vermelho); }
     .estoque-zero { background: rgba(60,60,60,0.4); color: #555; }
+
+    .aba-categoria {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        background: #1c1c1c;
+        color: var(--muted);
+        border: 1px solid #2a2a2a;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all .15s;
+    }
+    .aba-categoria:hover { color: #fff; border-color: #444; }
+    .aba-categoria.ativa {
+        background: var(--verde);
+        color: #00170a;
+        border-color: var(--verde);
+    }
 </style>
 {% endblock %}
 
@@ -26,8 +45,11 @@
         <h2>📦 Produtos Cadastrados</h2>
         <input type="text" id="busca-produto" placeholder="🔍 Buscar produto..."
                style="width:200px;padding:8px 12px;font-size:13px"
-               oninput="filtrarListaProdutos(this.value)">
+               oninput="filtrarListaProdutos()">
     </div>
+
+    <div id="abas-categoria" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
+
     <div class="table-wrap">
         <table>
             <thead>
@@ -113,11 +135,32 @@
 {% block extra_scripts %}
 <script>
 let todosProdsLista = [];
+let categoriaAtiva = 'Todos';
 
 async function carregarProdutos() {
     todosProdsLista = await fetch('/api/produtos').then(r => r.json()).catch(() => []);
-    renderizarListaProdutos(todosProdsLista);
+    montarAbasCategoria();
+    filtrarListaProdutos();
     verificarEstoque();
+}
+
+function montarAbasCategoria() {
+    const categorias = [...new Set(todosProdsLista.map(p => p.categoria))]
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const lista = ['Todos', ...categorias];
+
+    const container = document.getElementById('abas-categoria');
+    container.innerHTML = lista.map(cat => {
+        const ativo = cat === categoriaAtiva ? 'ativa' : '';
+        const catSafe = cat.replace(/'/g, "\\'");
+        return `<button class="aba-categoria ${ativo}" onclick="selecionarCategoria('${catSafe}')">${cat}</button>`;
+    }).join('');
+}
+
+function selecionarCategoria(cat) {
+    categoriaAtiva = cat;
+    montarAbasCategoria();
+    filtrarListaProdutos();
 }
 
 function renderizarListaProdutos(lista) {
@@ -184,8 +227,16 @@ async function toggleDisponivel(id, checkbox) {
     } catch (e) { checkbox.checked = !checkbox.checked; }
 }
 
-function filtrarListaProdutos(q) {
-    renderizarListaProdutos(todosProdsLista.filter(p => p.nome.toLowerCase().includes(q.toLowerCase())));
+function filtrarListaProdutos() {
+    const q = document.getElementById('busca-produto').value.toLowerCase();
+    let lista = todosProdsLista;
+    if (categoriaAtiva !== 'Todos') {
+        lista = lista.filter(p => p.categoria === categoriaAtiva);
+    }
+    if (q) {
+        lista = lista.filter(p => p.nome.toLowerCase().includes(q));
+    }
+    renderizarListaProdutos(lista);
 }
 
 function abrirModalProduto() {
@@ -194,7 +245,7 @@ function abrirModalProduto() {
     ['mp-nome', 'mp-venda', 'mp-custo'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('mp-estoque').value = '0';
     document.getElementById('mp-estoque-min').value = '0';
-    document.getElementById('mp-categoria').value = 'Cervejas';
+    document.getElementById('mp-categoria').value = (categoriaAtiva !== 'Todos') ? categoriaAtiva : 'Cervejas';
     document.getElementById('mp-foto').value = '';
     const prev = document.getElementById('mp-foto-preview');
     prev.style.display = 'none'; prev.src = '';
