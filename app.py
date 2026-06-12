@@ -1194,11 +1194,28 @@ def listar_vendedores_ativos():
 @app.route('/app/vendas', methods=['GET'])
 @app_auth_required
 def app_listar_vendas():
-    limit  = request.args.get('limit', 20, type=int)
-    periodo = request.args.get('periodo', 'hoje')  # hoje | semana | mes | tudo
+    limit   = request.args.get('limit', 1000, type=int)
+    periodo = request.args.get('periodo', 'hoje')   # hoje | semana | mes | tudo
+    data_especifica = request.args.get('data')       # YYYY-MM-DD  ← NOVO (para "ontem")
 
-    if periodo == 'tudo':
+    if data_especifica:
+        # Um dia específico em horário local (MS = UTC-4)
+        from datetime import datetime, timedelta, timezone
+        tz_offset = timedelta(hours=TZ_OFFSET)
+        tz_local  = timezone(tz_offset)
+        try:
+            d = datetime.strptime(data_especifica, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({'erro': 'Formato de data inválido. Use YYYY-MM-DD'}), 400
+        inicio = datetime(d.year, d.month, d.day,  0,  0,  0, tzinfo=tz_local).astimezone(timezone.utc).replace(tzinfo=None)
+        fim    = datetime(d.year, d.month, d.day, 23, 59, 59, tzinfo=tz_local).astimezone(timezone.utc).replace(tzinfo=None)
+        pedidos = Pedido.query.filter(
+            Pedido.data >= inicio, Pedido.data <= fim
+        ).order_by(Pedido.data.desc()).limit(limit).all()
+
+    elif periodo == 'tudo':
         pedidos = Pedido.query.order_by(Pedido.data.desc()).limit(limit).all()
+
     else:
         inicio, fim = get_periodo_datas(periodo)
         pedidos = Pedido.query.filter(
@@ -1215,8 +1232,8 @@ def app_listar_vendas():
         'forma_pagamento': p.forma_pagamento,
         'vendedor_nome':   p.vendedor_nome or '',
         'setor':           p.setor or '',
+        'fora_estoque':    p.fora_estoque if p.fora_estoque is not None else False,
         'data':            hora_local(p.data),
     } for p in pedidos])
-
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

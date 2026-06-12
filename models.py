@@ -33,7 +33,7 @@ class Pedido(db.Model):
     pago = db.Column(db.Boolean, default=False)
     vendedor_nome = db.Column(db.String(100), nullable=True)
     setor = db.Column(db.String(50), nullable=True)
-
+    fora_estoque = db.Column(db.Boolean, default=False)
 
 class Despesa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
